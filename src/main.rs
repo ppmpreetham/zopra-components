@@ -3,7 +3,7 @@ use gpui_kit::component::{ActiveTheme as _, Root};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
-use zopra_components::{EmojiPicker, OptionWheel, Side};
+use zopra_components::{EmojiPicker, MagneticButton, OptionWheel, Side};
 
 #[allow(clippy::too_many_lines)]
 #[component]
@@ -37,6 +37,9 @@ fn demo_app() {
         "Elixir".into(),
     ];
 
+    // Magnetic Button state
+    let (magnetic_clicks, set_magnetic_clicks) = use_state(|| 0usize);
+
     let bg_color = cx.theme().background;
     let card_bg = cx.theme().popover;
     let border_color = cx.theme().border;
@@ -67,11 +70,22 @@ fn demo_app() {
         })
     };
 
+    #[allow(clippy::arc_with_non_send_sync)]
+    let on_magnetic_click = {
+        let set_clicks = set_magnetic_clicks.clone();
+        let clicks = magnetic_clicks.clone();
+        Arc::new(move |_ev: &ClickEvent, _window: &mut Window, cx: &mut App| {
+            set_clicks.set(*clicks + 1, cx);
+        })
+    };
+
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;
+    let is_magnetic_tab = *tab == 2;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
+            // Header navigation switcher
             <div class="flex flex-row gap-2 p-1 rounded-lg border_1 mb-6" border_color={border_color} bg={card_bg}>
                 <div
                     class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
@@ -86,6 +100,13 @@ fn demo_app() {
                     onClick={move |_event, _window, cx| set_tab.set(1usize, cx)}
                 >
                     "Option Wheel"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_magnetic_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(2usize, cx)}
+                >
+                    "Magnetic Button"
                 </div>
             </div>
 
@@ -150,7 +171,7 @@ fn demo_app() {
                                 {selected_option.clone()}
                             </div>
                             <div class="text-xs" text_color={text_muted}>
-                                "Dude, try using mouse drag, scroll wheel, or arrow keys"
+                                "Use mouse drag, scroll wheel, or arrow keys"
                             </div>
                         </div>
 
@@ -171,6 +192,59 @@ fn demo_app() {
                                 draggable={true}
                                 on_change={on_wheel_change}
                             />
+                        </div>
+                    </div>
+                }.into_any_element()
+            } else {
+                div().into_any_element()
+            } }
+
+            // Magnetic Button view
+            { if is_magnetic_tab {
+                view! {
+                    <div class="flex flex-col items-center justify-center gap-6 size-full mt-6">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-xs font-semibold" text_color={text_muted}>
+                                "Interactive Magnetic Playground"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Move cursor near the buttons to feel magnetic attraction"
+                            </div>
+                            <div class="text-sm font-semibold mt-2">
+                                "Clicks: " {magnetic_clicks.clone()}
+                            </div>
+                        </div>
+
+                        <div class="flex flex-row items-center gap-12 mt-4">
+                            // Snappy magnetic button
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="text-xs font-medium" text_color={text_muted}>"Snappy (High Pull)"</span>
+                                <MagneticButton
+                                    label={"🧲 Snappy"}
+                                    width={140.0}
+                                    height={48.0}
+                                    strength={0.55}
+                                    radius={55.0}
+                                    max_offset={18.0}
+                                    responsiveness={20.0}
+                                    on_click={on_magnetic_click.clone()}
+                                />
+                            </div>
+
+                            // Floaty magnetic button
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="text-xs font-medium" text_color={text_muted}>"Floaty (Soft Spring)"</span>
+                                <MagneticButton
+                                    label={"✨ Floaty"}
+                                    width={140.0}
+                                    height={48.0}
+                                    strength={0.3}
+                                    radius={60.0}
+                                    max_offset={22.0}
+                                    responsiveness={8.0}
+                                    on_click={on_magnetic_click}
+                                />
+                            </div>
                         </div>
                     </div>
                 }.into_any_element()
@@ -199,7 +273,7 @@ fn main() {
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                 None,
-                size(px(520.0), px(660.0)),
+                size(px(560.0), px(680.0)),
                 cx,
             ))),
             ..Default::default()

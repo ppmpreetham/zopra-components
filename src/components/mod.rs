@@ -11,3 +11,10 @@ pub mod option_wheel;
 
 #[cfg(feature = "option-wheel")]
 pub use option_wheel::zopra::*;
+
+#[cfg(feature = "magnetic-button")]
+#[path = "magnetic-button/mod.rs"]
+pub mod magnetic_button;
+
+#[cfg(feature = "magnetic-button")]
+pub use magnetic_button::zopra::*;
