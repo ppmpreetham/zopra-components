@@ -1,14 +1,19 @@
 use std::sync::Arc;
-use gpui_kit::component::{ActiveTheme as _, Root};
+use gpui_kit::component::{ActiveTheme as _, Icon, IconName, Root};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
-use zopra_components::{EmojiPicker, MagneticButton, OptionWheel, Side};
+use zopra_components::{
+    Dial, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton, OptionWheel, Side,
+};
 
 #[allow(clippy::too_many_lines)]
 #[component]
 fn demo_app() {
     let (tab, set_tab) = use_state(|| 0usize);
+
+    // Dial state
+    let (dial_val, set_dial_val) = use_state(|| 42.0f32);
 
     // Emoji Picker state
     let (selected_emoji, set_selected_emoji) = use_state(|| SharedString::from("✨"));
@@ -39,6 +44,26 @@ fn demo_app() {
 
     // Magnetic Button state
     let (magnetic_clicks, set_magnetic_clicks) = use_state(|| 0usize);
+
+    // Dock state
+    let (dock_last_clicked, set_dock_last_clicked) = use_state(|| SharedString::from("None"));
+    let on_dock_click = {
+        let set_clicked = set_dock_last_clicked.clone();
+        Arc::new(move |ix: usize, _window: &mut Window, cx: &mut App| {
+            let names = ["Terminal", "Files", "Search", "Settings", "Profile"];
+            let name = names.get(ix).copied().unwrap_or("Item");
+            set_clicked.set(SharedString::from(name), cx);
+        })
+    };
+
+    let dock_entries = vec![
+        DockEntry::Item(DockItem::new(Icon::new(IconName::Bot), "Bot").active(true)),
+        DockEntry::Item(DockItem::new(Icon::new(IconName::Folder), "Files").badge(3)),
+        DockEntry::Item(DockItem::new(Icon::new(IconName::Search), "Search")),
+        DockEntry::Separator,
+        DockEntry::Item(DockItem::new(Icon::new(IconName::Settings), "Settings")),
+        DockEntry::Item(DockItem::new(Icon::new(IconName::User), "Profile")),
+    ];
 
     let bg_color = cx.theme().background;
     let card_bg = cx.theme().popover;
@@ -79,9 +104,19 @@ fn demo_app() {
         })
     };
 
+    #[allow(clippy::arc_with_non_send_sync)]
+    let on_dial_change = {
+        let set_val = set_dial_val.clone();
+        Arc::new(move |val: f32, _window: &mut Window, cx: &mut App| {
+            set_val.set(val, cx);
+        })
+    };
+
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;
     let is_magnetic_tab = *tab == 2;
+    let is_dial_tab = *tab == 3;
+    let is_dock_tab = *tab == 4;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
@@ -107,6 +142,20 @@ fn demo_app() {
                     onClick={move |_event, _window, cx| set_tab.set(2usize, cx)}
                 >
                     "Magnetic Button"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_dial_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(3usize, cx)}
+                >
+                    "Comet Dial"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_dock_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(4usize, cx)}
+                >
+                    "Dock"
                 </div>
             </div>
 
@@ -248,6 +297,74 @@ fn demo_app() {
                         </div>
                     </div>
                 }.into_any_element()
+            } else if is_dial_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-6">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "Comet Dial"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Drag or flick the arc, or use arrow keys / Home / End"
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-6 rounded-2xl flex flex-col items-center gap-4 border_1 shadow-sm"
+                            bg={card_bg}
+                            border_color={border_color}
+                        >
+                            <Dial
+                                value={*dial_val}
+                                min={0.0}
+                                max={100.0}
+                                step={1.0}
+                                unit={"%"}
+                                size={220.0}
+                                speed={35.0}
+                                on_change={on_dial_change}
+                            />
+
+                            <div class="text-xs font-medium" text_color={text_muted}>
+                                {format!("Committed: {:.1}%", *dial_val)}
+                            </div>
+                        </div>
+                    </div>
+                }.into_any_element()
+            } else if is_dock_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-6 size-full">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "macOS-style Dock"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Hover to magnify, click to trigger spring bounce"
+                            </div>
+                        </div>
+
+                        <div class="text-xs font-medium" text_color={text_muted}>
+                            {format!("Last Clicked: {}", *dock_last_clicked)}
+                        </div>
+
+                        <div class="relative w-full h-48 flex items-center justify-center">
+                            <Dock
+                                entries={dock_entries}
+                                position={DockPosition::Bottom}
+                                base_item_size={48.0}
+                                magnification={72.0}
+                                gap={10.0}
+                                roundness={0.5}
+                                bounce={true}
+                                tiles={true}
+                                show_labels={true}
+                                show_indicators={true}
+                                show_badges={true}
+                                on_item_click={on_dock_click}
+                            />
+                        </div>
+                    </div>
+                }.into_any_element()
             } else {
                 div().into_any_element()
             } }
@@ -269,6 +386,7 @@ fn main() {
     app.run(|cx| {
         gpui_kit::init(cx);
         zopra_components::option_wheel::zopra::init(cx);
+        zopra_components::dial::zopra::init_dial(cx);
 
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(

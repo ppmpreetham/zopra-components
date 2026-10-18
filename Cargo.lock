@@ -8362,6 +8362,7 @@ dependencies = [
 name = "zopra-components"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "emojis",
  "gpui-component",
  "gpui-kit",

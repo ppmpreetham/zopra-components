@@ -18,3 +18,19 @@ pub mod magnetic_button;
 
 #[cfg(feature = "magnetic-button")]
 pub use magnetic_button::zopra::*;
+
+#[cfg(feature = "dial")]
+#[path = "dial/mod.rs"]
+pub mod dial;
+
+#[cfg(feature = "dial")]
+pub use dial::zopra::*;
+
+#[cfg(feature = "dock")]
+#[path = "dock/mod.rs"]
+pub mod dock;
+
+#[cfg(feature = "dock")]
+pub use dock::zopra::*;
+
+
