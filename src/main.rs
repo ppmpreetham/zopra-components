@@ -4,8 +4,8 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
 use zopra_components::{
-    Dial, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton, OptionWheel,
-    RangeSlider, Side,
+    Dial, DiscoverButton, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton,
+    OptionWheel, RangeSlider, Side,
 };
 
 #[allow(clippy::too_many_lines)]
@@ -124,12 +124,24 @@ fn demo_app() {
         })
     };
 
+    // Discover Button state
+    let (discover_clicks, set_discover_clicks) = use_state(|| 0usize);
+    #[allow(clippy::arc_with_non_send_sync)]
+    let on_discover_click = {
+        let set_clicks = set_discover_clicks.clone();
+        let clicks = *discover_clicks;
+        Arc::new(move |_window: &mut Window, cx: &mut App| {
+            set_clicks.set(clicks + 1, cx);
+        })
+    };
+
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;
     let is_magnetic_tab = *tab == 2;
     let is_dial_tab = *tab == 3;
     let is_dock_tab = *tab == 4;
     let is_range_tab = *tab == 5;
+    let is_discover_tab = *tab == 6;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
@@ -176,6 +188,13 @@ fn demo_app() {
                     onClick={move |_event, _window, cx| set_tab.set(5usize, cx)}
                 >
                     "Range"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_discover_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(6usize, cx)}
+                >
+                    "Discover"
                 </div>
             </div>
 
@@ -414,6 +433,35 @@ fn demo_app() {
                                 hover_preview={true}
                                 on_change={on_range_change}
                             />
+                        </div>
+                    </div>
+                }.into_any_element()
+            } else if is_discover_tab {
+                let clicks_text = SharedString::from(format!("Clicks: {}", *discover_clicks));
+                view! {
+                    <div class="flex flex-col items-center gap-6 size-full">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "Discover Button"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Pill button with expanding circular fill on hover and cubic-bezier easing"
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-8 rounded-2xl flex flex-col items-center justify-center gap-6 border_1 shadow-sm w-full"
+                            bg={card_bg}
+                            border_color={border_color}
+                        >
+                            <DiscoverButton
+                                label={"Discover More"}
+                                on_click={on_discover_click}
+                            />
+
+                            <div class="text-xs" text_color={text_muted}>
+                                {clicks_text}
+                            </div>
                         </div>
                     </div>
                 }.into_any_element()

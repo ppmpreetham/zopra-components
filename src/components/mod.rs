@@ -40,5 +40,13 @@ pub mod range;
 #[cfg(feature = "range")]
 pub use range::zopra::*;
 
+#[cfg(feature = "discover-button")]
+#[path = "discover-button/mod.rs"]
+pub mod discover_button;
+
+#[cfg(feature = "discover-button")]
+pub use discover_button::zopra::*;
+
+
 
 
