@@ -47,6 +47,9 @@ pub mod discover_button;
 #[cfg(feature = "discover-button")]
 pub use discover_button::zopra::*;
 
+#[cfg(feature = "status-bars")]
+#[path = "status-bars/mod.rs"]
+pub mod status_bars;
 
-
-
+#[cfg(feature = "status-bars")]
+pub use status_bars::zopra::*;
