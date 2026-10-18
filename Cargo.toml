@@ -1,0 +1,23 @@
+[package]
+name = "zopra-components"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["emoji-picker"]
+emoji-picker = ["dep:emojis"]
+
+[dependencies]
+gpui-kit = { version = "0.7.3" }
+gpui-component = { version = "0.7.3" }
+zopra = { path = "../zopra" }
+emojis = { version = "0.6", optional = true }
+
+[[bin]]
+name = "zopra-components"
+path = "src/main.rs"
+required-features = ["emoji-picker"]
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+wildcard_imports = "allow"
