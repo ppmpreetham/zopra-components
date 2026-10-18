@@ -4,8 +4,9 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
 use zopra_components::{
-    Dial, DiscoverButton, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton,
-    OptionWheel, RangeSlider, Side,
+    fill_status_days, status_today, Dial, DiscoverButton, Dock, DockEntry, DockItem, DockPosition,
+    EmojiPicker, MagneticButton, OptionWheel, RangeSlider, Side, StatusBars, StatusDay,
+    StatusIncident,
 };
 
 #[allow(clippy::too_many_lines)]
@@ -135,6 +136,16 @@ fn demo_app() {
         })
     };
 
+    // Status Bars state
+    let today = status_today();
+    let from = today - chrono::Duration::days(89);
+    let status_history = fill_status_days(from, today, [
+        StatusDay::new(today - chrono::Duration::days(12))
+            .downtime(95)
+            .incident(StatusIncident::new("Database failover").minutes(95)),
+        StatusDay::new(today - chrono::Duration::days(3)).degraded(40),
+    ]);
+
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;
     let is_magnetic_tab = *tab == 2;
@@ -142,6 +153,7 @@ fn demo_app() {
     let is_dock_tab = *tab == 4;
     let is_range_tab = *tab == 5;
     let is_discover_tab = *tab == 6;
+    let is_status_tab = *tab == 7;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
@@ -195,6 +207,13 @@ fn demo_app() {
                     onClick={move |_event, _window, cx| set_tab.set(6usize, cx)}
                 >
                     "Discover"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_status_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(7usize, cx)}
+                >
+                    "Status"
                 </div>
             </div>
 
@@ -465,6 +484,32 @@ fn demo_app() {
                         </div>
                     </div>
                 }.into_any_element()
+            } else if is_status_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-6 size-full">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "System Status Bars"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Hover or focus bars to inspect incidents, downtime, and daily uptime"
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-6 rounded-2xl flex flex-col items-center gap-4 border_1 shadow-sm w-full"
+                            bg={card_bg}
+                            border_color={border_color}
+                        >
+                            <StatusBars
+                                label={"Cloud API Platform"}
+                                days={status_history}
+                                bar_height={32.0}
+                                pulse={true}
+                            />
+                        </div>
+                    </div>
+                }.into_any_element()
             } else {
                 div().into_any_element()
             } }
@@ -488,6 +533,7 @@ fn main() {
         zopra_components::option_wheel::zopra::init(cx);
         zopra_components::dial::zopra::init_dial(cx);
         zopra_components::range::gpui::init(cx);
+        zopra_components::status_bars::init_status_bars(cx);
 
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
