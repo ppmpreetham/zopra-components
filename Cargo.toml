@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock"]
+default = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range"]
 emoji-picker = ["dep:emojis"]
 option-wheel = []
 magnetic-button = []
 dial = []
 dock = []
+range = []
 
 [dependencies]
 gpui-kit = { version = "0.7.3" }
@@ -21,7 +22,7 @@ chrono = {version = "0.4.45", optional = true}
 [[bin]]
 name = "zopra-components"
 path = "src/main.rs"
-required-features = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock"]
+required-features = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range"]
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }

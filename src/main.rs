@@ -4,13 +4,17 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
 use zopra_components::{
-    Dial, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton, OptionWheel, Side,
+    Dial, Dock, DockEntry, DockItem, DockPosition, EmojiPicker, MagneticButton, OptionWheel,
+    RangeSlider, Side,
 };
 
 #[allow(clippy::too_many_lines)]
 #[component]
 fn demo_app() {
     let (tab, set_tab) = use_state(|| 0usize);
+
+    // Range Slider state
+    let (range_val, set_range_val) = use_state(|| (200.0f32, 700.0f32));
 
     // Dial state
     let (dial_val, set_dial_val) = use_state(|| 42.0f32);
@@ -112,11 +116,20 @@ fn demo_app() {
         })
     };
 
+    #[allow(clippy::arc_with_non_send_sync)]
+    let on_range_change = {
+        let set_range = set_range_val.clone();
+        Arc::new(move |low: f32, high: f32, _window: &mut Window, cx: &mut App| {
+            set_range.set((low, high), cx);
+        })
+    };
+
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;
     let is_magnetic_tab = *tab == 2;
     let is_dial_tab = *tab == 3;
     let is_dock_tab = *tab == 4;
+    let is_range_tab = *tab == 5;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
@@ -156,6 +169,13 @@ fn demo_app() {
                     onClick={move |_event, _window, cx| set_tab.set(4usize, cx)}
                 >
                     "Dock"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_range_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(5usize, cx)}
+                >
+                    "Range"
                 </div>
             </div>
 
@@ -365,6 +385,38 @@ fn demo_app() {
                         </div>
                     </div>
                 }.into_any_element()
+            } else if is_range_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-6 size-full">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "Range Slider"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Drag either thumb, hover for preview, or use arrow keys"
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-6 rounded-2xl flex flex-col items-center gap-4 border_1 shadow-sm w-full"
+                            bg={card_bg}
+                            border_color={border_color}
+                        >
+                            <RangeSlider
+                                low={range_val.0}
+                                high={range_val.1}
+                                min={0.0}
+                                max={1000.0}
+                                step={10.0}
+                                prefix={"$"}
+                                ticks={5}
+                                clear_button={true}
+                                hover_preview={true}
+                                on_change={on_range_change}
+                            />
+                        </div>
+                    </div>
+                }.into_any_element()
             } else {
                 div().into_any_element()
             } }
@@ -387,6 +439,7 @@ fn main() {
         gpui_kit::init(cx);
         zopra_components::option_wheel::zopra::init(cx);
         zopra_components::dial::zopra::init_dial(cx);
+        zopra_components::range::gpui::init(cx);
 
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(

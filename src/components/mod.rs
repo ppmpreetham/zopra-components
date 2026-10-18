@@ -33,4 +33,12 @@ pub mod dock;
 #[cfg(feature = "dock")]
 pub use dock::zopra::*;
 
+#[cfg(feature = "range")]
+#[path = "range/mod.rs"]
+pub mod range;
+
+#[cfg(feature = "range")]
+pub use range::zopra::*;
+
+
 
