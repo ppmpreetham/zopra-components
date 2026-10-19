@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range", "discover-button", "status-bars"]
+default = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range", "discover-button", "status-bars", "pixel-reveal", "color-picker"]
 emoji-picker = ["dep:emojis"]
 option-wheel = []
 magnetic-button = []
@@ -13,6 +13,8 @@ dock = []
 range = []
 discover-button = []
 status-bars = ["dep:chrono"]
+pixel-reveal = ["dep:fontdue"]
+color-picker = ["dep:image", "dep:smallvec"]
 
 [dependencies]
 gpui-kit = { version = "0.7.3" }
@@ -21,13 +23,32 @@ zopra = { path = "../zopra" }
 emojis = { version = "0.6", optional = true }
 chrono = {version = "0.4.45", optional = true}
 fontdue = {version="0.9.4", optional = true}
-image = { version = "0.25.10", optional = true }
+image = { version = "0.25.10", optional = true, default-features = false }
 smallvec = { version = "1.16.3", optional = true }
 
 [[bin]]
 name = "zopra-components"
 path = "src/main.rs"
-required-features = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range", "discover-button", "status-bars"]
+required-features = ["emoji-picker", "option-wheel", "magnetic-button", "dial", "dock", "range", "discover-button", "status-bars", "pixel-reveal", "color-picker"]
+
+# dev profile optimized for fast compilation
+[profile.dev]
+opt-level = 0 # no optimizations in dev mode
+debug = true # full debug symbols
+panic = "unwind" # allows stack unwinding
+
+# release profile optimized for performance
+
+[profile.release.package."*"]
+opt-level = 3 # External crates run at full speed so your app isn't sluggish
+
+[profile.release]
+opt-level = 3 # max runtime optimization
+codegen-units = 1 # no parallel blocks (better for performance)
+lto = "fat" # LTO across all crates
+panic = "abort" # Removes unwinding code
+strip = true # strips debug symbols to slim down the binary
+debug = false # no debug symbols in release
 
 [lints.clippy]
 pedantic = { level = "warn", priority = -1 }
@@ -38,8 +59,15 @@ perf = { level = "warn", priority = -1 }
 complexity = { level = "warn", priority = -1 }
 
 dbg_macro = "warn"
-
 cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
-
 upper_case_acronyms = "allow"
+
+# nursery
+significant_drop_tightening = "warn"
+redundant_clone = "warn"
+use_self = "warn"
+redundant_else = "warn"
+or_fun_call = "warn"
+missing_const_for_fn = "warn"
+derive_partial_eq_without_eq = "warn"
