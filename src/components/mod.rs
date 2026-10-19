@@ -53,3 +53,18 @@ pub mod status_bars;
 
 #[cfg(feature = "status-bars")]
 pub use status_bars::zopra::*;
+
+#[cfg(feature = "pixel-reveal")]
+#[path = "pixel-reveal/mod.rs"]
+pub mod pixel_reveal;
+
+#[cfg(feature = "pixel-reveal")]
+pub use pixel_reveal::zopra::*;
+
+#[cfg(feature = "color-picker")]
+#[path = "color-picker/mod.rs"]
+pub mod color_picker;
+
+#[cfg(feature = "color-picker")]
+pub use color_picker::zopra::*;
+

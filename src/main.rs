@@ -4,25 +4,35 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, hooks::use_state, view};
 use zopra_components::{
-    fill_status_days, status_today, Dial, DiscoverButton, Dock, DockEntry, DockItem, DockPosition,
-    EmojiPicker, MagneticButton, OptionWheel, RangeSlider, Side, StatusBars, StatusDay,
-    StatusIncident,
+    fill_status_days, status_today, ColorPicker, Dial, DiscoverButton, Dock, DockEntry, DockItem,
+    DockPosition, EmojiPicker, MagneticButton, OptionWheel, PixelReveal, Preset, RangeSlider, Side,
+    StatusBars, StatusDay, StatusIncident,
 };
 
 #[allow(clippy::too_many_lines)]
 #[component]
 fn demo_app() {
-    let (tab, set_tab) = use_state(|| 0usize);
+    let (tab, set_tab) = use_state( 0usize);
+
+    // Color Picker state
+    let (color_val, set_color_val) = use_state::<Hsla>(rgb(0xe11d48).into());
+    #[allow(clippy::arc_with_non_send_sync)]
+    let on_color_change = {
+        let set_color = set_color_val;
+        Arc::new(move |hsla: Hsla, cx: &mut App| {
+            set_color.set(hsla, cx);
+        })
+    };
 
     // Range Slider state
-    let (range_val, set_range_val) = use_state(|| (200.0f32, 700.0f32));
+    let (range_val, set_range_val) = use_state( (200.0f32, 700.0f32));
 
     // Dial state
-    let (dial_val, set_dial_val) = use_state(|| 42.0f32);
+    let (dial_val, set_dial_val) = use_state( 42.0f32);
 
     // Emoji Picker state
-    let (selected_emoji, set_selected_emoji) = use_state(|| SharedString::from("✨"));
-    let (recent_emojis, set_recent_emojis) = use_state(|| {
+    let (selected_emoji, set_selected_emoji) = use_state( SharedString::from("✨"));
+    let (recent_emojis, set_recent_emojis) = use_state( {
         vec![
             SharedString::from("✨"),
             SharedString::from("🚀"),
@@ -33,7 +43,7 @@ fn demo_app() {
     });
 
     // Option Wheel state
-    let (selected_option, set_selected_option) = use_state(|| SharedString::from("Rust"));
+    let (selected_option, set_selected_option) = use_state( SharedString::from("Rust"));
     let wheel_items = vec![
         "Rust".into(),
         "TypeScript".into(),
@@ -48,12 +58,12 @@ fn demo_app() {
     ];
 
     // Magnetic Button state
-    let (magnetic_clicks, set_magnetic_clicks) = use_state(|| 0usize);
+    let (magnetic_clicks, set_magnetic_clicks) = use_state( 0usize);
 
     // Dock state
-    let (dock_last_clicked, set_dock_last_clicked) = use_state(|| SharedString::from("None"));
+    let (dock_last_clicked, set_dock_last_clicked) = use_state( SharedString::from("None"));
     let on_dock_click = {
-        let set_clicked = set_dock_last_clicked.clone();
+        let set_clicked = set_dock_last_clicked;
         Arc::new(move |ix: usize, _window: &mut Window, cx: &mut App| {
             let names = ["Terminal", "Files", "Search", "Settings", "Profile"];
             let name = names.get(ix).copied().unwrap_or("Item");
@@ -70,7 +80,7 @@ fn demo_app() {
         DockEntry::Item(DockItem::new(Icon::new(IconName::User), "Profile")),
     ];
 
-    let bg_color = cx.theme().background;
+    let bg_color = gpui_kit::black();
     let card_bg = cx.theme().popover;
     let border_color = cx.theme().border;
     let text_muted = cx.theme().muted_foreground;
@@ -78,7 +88,7 @@ fn demo_app() {
 
     let on_select = {
         let set_selected = set_selected_emoji.clone();
-        let set_recent = set_recent_emojis.clone();
+        let set_recent = set_recent_emojis;
         Arc::new(move |emoji: &'static emojis::Emoji, _window: &mut Window, cx: &mut App| {
             let str_val = SharedString::from(emoji.as_str());
             set_selected.set(str_val.clone(), cx);
@@ -94,7 +104,7 @@ fn demo_app() {
     };
 
     let on_wheel_change = {
-        let set_selected = set_selected_option.clone();
+        let set_selected = set_selected_option;
         Arc::new(move |_idx: usize, item: SharedString, _window: &mut Window, cx: &mut App| {
             set_selected.set(item, cx);
         })
@@ -102,7 +112,7 @@ fn demo_app() {
 
     #[allow(clippy::arc_with_non_send_sync)]
     let on_magnetic_click = {
-        let set_clicks = set_magnetic_clicks.clone();
+        let set_clicks = set_magnetic_clicks;
         let clicks = magnetic_clicks.clone();
         Arc::new(move |_ev: &ClickEvent, _window: &mut Window, cx: &mut App| {
             set_clicks.set(*clicks + 1, cx);
@@ -111,7 +121,7 @@ fn demo_app() {
 
     #[allow(clippy::arc_with_non_send_sync)]
     let on_dial_change = {
-        let set_val = set_dial_val.clone();
+        let set_val = set_dial_val;
         Arc::new(move |val: f32, _window: &mut Window, cx: &mut App| {
             set_val.set(val, cx);
         })
@@ -119,17 +129,17 @@ fn demo_app() {
 
     #[allow(clippy::arc_with_non_send_sync)]
     let on_range_change = {
-        let set_range = set_range_val.clone();
+        let set_range = set_range_val;
         Arc::new(move |low: f32, high: f32, _window: &mut Window, cx: &mut App| {
             set_range.set((low, high), cx);
         })
     };
 
     // Discover Button state
-    let (discover_clicks, set_discover_clicks) = use_state(|| 0usize);
+    let (discover_clicks, set_discover_clicks) = use_state( 0usize);
     #[allow(clippy::arc_with_non_send_sync)]
     let on_discover_click = {
-        let set_clicks = set_discover_clicks.clone();
+        let set_clicks = set_discover_clicks;
         let clicks = *discover_clicks;
         Arc::new(move |_window: &mut Window, cx: &mut App| {
             set_clicks.set(clicks + 1, cx);
@@ -154,11 +164,13 @@ fn demo_app() {
     let is_range_tab = *tab == 5;
     let is_discover_tab = *tab == 6;
     let is_status_tab = *tab == 7;
+    let is_pixel_tab = *tab == 8;
+    let is_color_tab = *tab == 9;
 
     view! {
         <div class="flex flex-col items-center size-full p-6" bg={bg_color}>
             // Header navigation switcher
-            <div class="flex flex-row gap-2 p-1 rounded-lg border_1 mb-6" border_color={border_color} bg={card_bg}>
+            <div class="flex flex-row gap-2 p-1 rounded-lg border_1 mb-6 flex-wrap justify-center" border_color={border_color} bg={card_bg}>
                 <div
                     class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
                     when={(is_emoji_tab, move |d| d.bg(accent_color))}
@@ -215,6 +227,20 @@ fn demo_app() {
                 >
                     "Status"
                 </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_pixel_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(8usize, cx)}
+                >
+                    "Pixel Reveal"
+                </div>
+                <div
+                    class="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer"
+                    when={(is_color_tab, move |d| d.bg(accent_color))}
+                    onClick={move |_event, _window, cx| set_tab.set(9usize, cx)}
+                >
+                    "Color Picker"
+                </div>
             </div>
 
             // Emoji Picker view
@@ -230,7 +256,7 @@ fn demo_app() {
                                 bg={card_bg}
                                 border_color={border_color}
                             >
-                                {selected_emoji.clone()}
+                                {selected_emoji}
                             </div>
                         </div>
 
@@ -275,7 +301,7 @@ fn demo_app() {
                                 "Selected Option"
                             </div>
                             <div class="text-lg font-bold">
-                                {selected_option.clone()}
+                                {selected_option}
                             </div>
                             <div class="text-xs" text_color={text_muted}>
                                 "Use mouse drag, scroll wheel, or arrow keys"
@@ -318,7 +344,7 @@ fn demo_app() {
                                 "Move cursor near the buttons to feel magnetic attraction"
                             </div>
                             <div class="text-sm font-semibold mt-2">
-                                "Clicks: " {magnetic_clicks.clone()}
+                                "Clicks: " {magnetic_clicks}
                             </div>
                         </div>
 
@@ -510,6 +536,77 @@ fn demo_app() {
                         </div>
                     </div>
                 }.into_any_element()
+            } else if is_pixel_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-6 w-full">
+                        <div class="flex flex-col items-center gap-1">
+                            <div class="text-sm font-semibold">
+                                "Pixel Reveal Typography"
+                            </div>
+                            <div class="text-xs" text_color={text_muted}>
+                                "Animated quadtree pixel dissolve & rasterized typography"
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-6 rounded-2xl flex flex-col gap-5 border_1 shadow-lg w-full"
+                            bg={rgb(0x0a0a0a)}
+                            border_color={rgb(0x27272a)}
+                        >
+                            <div class="text-xs font-semibold" text_color={rgb(0xa1a1aa)}>
+                                "PRESET: SIGNAL"
+                            </div>
+                            <PixelReveal
+                                text={"CYBERNETIC INTERFACE"}
+                                preset={Preset::Signal}
+                                font_size={28.0}
+                                color={rgb(0xffffff).into()}
+                            />
+
+                            <div class="text-xs font-semibold mt-2" text_color={rgb(0xa1a1aa)}>
+                                "PRESET: GLITCH"
+                            </div>
+                            <PixelReveal
+                                text={"ANOMALY DETECTED"}
+                                preset={Preset::Glitch}
+                                font_size={24.0}
+                                color={rgb(0xffffff).into()}
+                            />
+
+                            <div class="text-xs font-semibold mt-2" text_color={rgb(0xa1a1aa)}>
+                                "PRESET: TYPEWRITER"
+                            </div>
+                            <PixelReveal
+                                text={"Resolving typography frame by frame..."}
+                                preset={Preset::Typewriter}
+                                font_size={20.0}
+                                color={rgb(0xffffff).into()}
+                            />
+                        </div>
+                    </div>
+                }.into_any_element()
+            } else if is_color_tab {
+                view! {
+                    <div class="flex flex-col items-center gap-5">
+                        <div class="flex flex-row items-center gap-3">
+                            <div class="text-xs font-semibold" text_color={text_muted}>
+                                "Selected Color:"
+                            </div>
+                            <div
+                                class="w-12 h-6 rounded-md border_1 shadow-sm"
+                                bg={*color_val}
+                                border_color={border_color}
+                            />
+                        </div>
+
+                        <ColorPicker
+                            initial={"#e11d48"}
+                            show_mode_switcher={true}
+                            alpha={true}
+                            on_change={on_color_change}
+                        />
+                    </div>
+                }.into_any_element()
             } else {
                 div().into_any_element()
             } }
@@ -534,6 +631,7 @@ fn main() {
         zopra_components::dial::zopra::init_dial(cx);
         zopra_components::range::gpui::init(cx);
         zopra_components::status_bars::init_status_bars(cx);
+        zopra_components::pixel_reveal::init_pixel_reveal(cx);
 
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
