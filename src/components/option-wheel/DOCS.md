@@ -36,7 +36,7 @@ use zopra::{component, hooks::use_state, view};
 
 #[component]
 fn date_picker() {
-    let (chosen, set_chosen) = use_state(|| SharedString::from("January"));
+    let (chosen, set_chosen) = use_state( SharedString::from("January"));
 
     let items = vec![
         "January".into(),

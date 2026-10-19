@@ -40,14 +40,22 @@ pub struct Parsed {
 #[must_use]
 pub fn srgb_to_linear(c: f32) -> f32 {
     let a = c.abs();
-    let l = if a <= 0.04045 { a / 12.92 } else { ((a + 0.055) / 1.055).powf(2.4) };
+    let l = if a <= 0.04045 {
+        a / 12.92
+    } else {
+        ((a + 0.055) / 1.055).powf(2.4)
+    };
     l.copysign(c)
 }
 
 #[must_use]
 pub fn linear_to_srgb(c: f32) -> f32 {
     let a = c.abs();
-    let s = if a <= 0.003_130_8 { a * 12.92 } else { 1.055 * a.powf(1.0 / 2.4) - 0.055 };
+    let s = if a <= 0.003_130_8 {
+        a * 12.92
+    } else {
+        1.055 * a.powf(1.0 / 2.4) - 0.055
+    };
     s.copysign(c)
 }
 
@@ -127,13 +135,21 @@ pub fn oklab_to_linear([l, a, b]: [f32; 3]) -> [f32; 3] {
 fn lab_f(t: f32) -> f32 {
     const EPS: f32 = 216.0 / 24389.0;
     const KAPPA: f32 = 24389.0 / 27.0;
-    if t > EPS { t.cbrt() } else { (KAPPA * t + 16.0) / 116.0 }
+    if t > EPS {
+        t.cbrt()
+    } else {
+        (KAPPA * t + 16.0) / 116.0
+    }
 }
 
 fn linear_to_lab(lin: [f32; 3]) -> [f32; 3] {
     let xyz = mat(&D65_TO_D50, mat(&SRGB_TO_XYZ, lin));
     let f = [0, 1, 2].map(|i| lab_f(xyz[i] / D50_WHITE[i]));
-    [116.0 * f[1] - 16.0, 500.0 * (f[0] - f[1]), 200.0 * (f[1] - f[2])]
+    [
+        116.0 * f[1] - 16.0,
+        500.0 * (f[0] - f[1]),
+        200.0 * (f[1] - f[2]),
+    ]
 }
 
 fn lab_to_linear([l, a, b]: [f32; 3]) -> [f32; 3] {
@@ -142,11 +158,27 @@ fn lab_to_linear([l, a, b]: [f32; 3]) -> [f32; 3] {
     let fy = (l + 16.0) / 116.0;
     let fx = fy + a / 500.0;
     let fz = fy - b / 200.0;
-    let inv = |f: f32| if f * f * f > EPS { f * f * f } else { (116.0 * f - 16.0) / KAPPA };
+    let inv = |f: f32| {
+        if f * f * f > EPS {
+            f * f * f
+        } else {
+            (116.0 * f - 16.0) / KAPPA
+        }
+    };
     let x = inv(fx);
-    let y = if l > KAPPA * EPS { fy * fy * fy } else { l / KAPPA };
+    let y = if l > KAPPA * EPS {
+        fy * fy * fy
+    } else {
+        l / KAPPA
+    };
     let z = inv(fz);
-    mat(&XYZ_TO_SRGB, mat(&D50_TO_D65, [x * D50_WHITE[0], y * D50_WHITE[1], z * D50_WHITE[2]]))
+    mat(
+        &XYZ_TO_SRGB,
+        mat(
+            &D50_TO_D65,
+            [x * D50_WHITE[0], y * D50_WHITE[1], z * D50_WHITE[2]],
+        ),
+    )
 }
 
 fn in_gamut(lin: [f32; 3]) -> bool {
@@ -175,13 +207,21 @@ fn map_linear_to_srgb(lin: [f32; 3]) -> (Rgb, bool) {
             hi = mid;
         }
     }
-    (encode(oklab_to_linear([l, lo * hue.cos(), lo * hue.sin()])), true)
+    (
+        encode(oklab_to_linear([l, lo * hue.cos(), lo * hue.sin()])),
+        true,
+    )
 }
 
 impl Color {
     #[must_use]
     pub fn new(h: f32, s: f32, v: f32, a: f32) -> Self {
-        Self { h: h.rem_euclid(360.0), s: s.clamp(0.0, 1.0), v: v.clamp(0.0, 1.0), a: a.clamp(0.0, 1.0) }
+        Self {
+            h: h.rem_euclid(360.0),
+            s: s.clamp(0.0, 1.0),
+            v: v.clamp(0.0, 1.0),
+            a: a.clamp(0.0, 1.0),
+        }
     }
 
     #[must_use]
@@ -215,7 +255,11 @@ impl Color {
     #[must_use]
     pub fn from_hwb(h: f32, w: f32, b: f32, a: f32) -> Self {
         let sum = w + b;
-        let (w, b) = if sum > 1.0 { (w / sum, b / sum) } else { (w, b) };
+        let (w, b) = if sum > 1.0 {
+            (w / sum, b / sum)
+        } else {
+            (w, b)
+        };
         let v = 1.0 - b;
         Self::new(h, if v <= 0.0 { 0.0 } else { 1.0 - w / v }, v, a)
     }
@@ -223,7 +267,11 @@ impl Color {
     #[must_use]
     pub fn hsl(self) -> (f32, f32, f32) {
         let l = self.v * (1.0 - self.s / 2.0);
-        let s = if l <= 0.0 || l >= 1.0 { 0.0 } else { (self.v - l) / l.min(1.0 - l) };
+        let s = if l <= 0.0 || l >= 1.0 {
+            0.0
+        } else {
+            (self.v - l) / l.min(1.0 - l)
+        };
         (self.h, s, l)
     }
 
@@ -246,7 +294,15 @@ impl Color {
     pub fn oklch(self) -> [f32; 3] {
         let [l, a, b] = self.oklab();
         let c = a.hypot(b);
-        [l, c, if c < 4e-4 { 0.0 } else { b.atan2(a).to_degrees().rem_euclid(360.0) }]
+        [
+            l,
+            c,
+            if c < 4e-4 {
+                0.0
+            } else {
+                b.atan2(a).to_degrees().rem_euclid(360.0)
+            },
+        ]
     }
 
     #[must_use]
@@ -259,13 +315,24 @@ impl Color {
     pub fn lch(self) -> [f32; 3] {
         let [l, a, b] = self.lab();
         let c = a.hypot(b);
-        [l, c, if c < 0.02 { 0.0 } else { b.atan2(a).to_degrees().rem_euclid(360.0) }]
+        [
+            l,
+            c,
+            if c < 0.02 {
+                0.0
+            } else {
+                b.atan2(a).to_degrees().rem_euclid(360.0)
+            },
+        ]
     }
 
     #[must_use]
     pub fn with_xy(self, x: f32, y: f32) -> Self {
         let c = Self::from_rgb(xy_to_rgb(x, y), self.a, self.h);
-        Self { v: if self.v < 0.02 { 1.0 } else { self.v }, ..c }
+        Self {
+            v: if self.v < 0.02 { 1.0 } else { self.v },
+            ..c
+        }
     }
 }
 
@@ -329,13 +396,23 @@ fn fmt_n(v: f32, dp: usize) -> String {
 
 #[must_use]
 pub fn format_color(c: Color, f: ColorFormat, hex_hash: bool) -> String {
-    let alpha = if c.a >= 0.9995 { String::new() } else { format!(" / {}", fmt_n(c.a, 2)) };
+    let alpha = if c.a >= 0.9995 {
+        String::new()
+    } else {
+        format!(" / {}", fmt_n(c.a, 2))
+    };
     let byte = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
     let [r, g, b] = c.to_rgb();
 
     match f {
         ColorFormat::Hex => {
-            let mut s = format!("{}{:02x}{:02x}{:02x}", if hex_hash { "#" } else { "" }, byte(r), byte(g), byte(b));
+            let mut s = format!(
+                "{}{:02x}{:02x}{:02x}",
+                if hex_hash { "#" } else { "" },
+                byte(r),
+                byte(g),
+                byte(b)
+            );
             if c.a < 0.9995 {
                 s.push_str(&format!("{:02x}", byte(c.a)));
             }
@@ -344,30 +421,72 @@ pub fn format_color(c: Color, f: ColorFormat, hex_hash: bool) -> String {
         ColorFormat::Rgb => format!("rgb({} {} {}{})", byte(r), byte(g), byte(b), alpha),
         ColorFormat::Hsl => {
             let (h, s, l) = c.hsl();
-            format!("hsl({}deg {}% {}%{})", fmt_n(h, 0), fmt_n(s * 100.0, 0), fmt_n(l * 100.0, 0), alpha)
+            format!(
+                "hsl({}deg {}% {}%{})",
+                fmt_n(h, 0),
+                fmt_n(s * 100.0, 0),
+                fmt_n(l * 100.0, 0),
+                alpha
+            )
         }
         ColorFormat::Hwb => {
             let (h, w, bl) = c.hwb();
-            format!("hwb({}deg {}% {}%{})", fmt_n(h, 0), fmt_n(w * 100.0, 0), fmt_n(bl * 100.0, 0), alpha)
+            format!(
+                "hwb({}deg {}% {}%{})",
+                fmt_n(h, 0),
+                fmt_n(w * 100.0, 0),
+                fmt_n(bl * 100.0, 0),
+                alpha
+            )
         }
         ColorFormat::Hsv => {
-            format!("hsv({}deg {}% {}%{})", fmt_n(c.h, 0), fmt_n(c.s * 100.0, 0), fmt_n(c.v * 100.0, 0), alpha)
+            format!(
+                "hsv({}deg {}% {}%{})",
+                fmt_n(c.h, 0),
+                fmt_n(c.s * 100.0, 0),
+                fmt_n(c.v * 100.0, 0),
+                alpha
+            )
         }
         ColorFormat::Oklch => {
             let [l, ch, h] = c.oklch();
-            format!("oklch({} {} {}{})", fmt_n(l, 3), fmt_n(ch, 3), fmt_n(h, 1), alpha)
+            format!(
+                "oklch({} {} {}{})",
+                fmt_n(l, 3),
+                fmt_n(ch, 3),
+                fmt_n(h, 1),
+                alpha
+            )
         }
         ColorFormat::Oklab => {
             let [l, la, lb] = c.oklab();
-            format!("oklab({} {} {}{})", fmt_n(l, 3), fmt_n(la, 3), fmt_n(lb, 3), alpha)
+            format!(
+                "oklab({} {} {}{})",
+                fmt_n(l, 3),
+                fmt_n(la, 3),
+                fmt_n(lb, 3),
+                alpha
+            )
         }
         ColorFormat::Lab => {
             let [l, la, lb] = c.lab();
-            format!("lab({} {} {}{})", fmt_n(l, 1), fmt_n(la, 1), fmt_n(lb, 1), alpha)
+            format!(
+                "lab({} {} {}{})",
+                fmt_n(l, 1),
+                fmt_n(la, 1),
+                fmt_n(lb, 1),
+                alpha
+            )
         }
         ColorFormat::Lch => {
             let [l, ch, h] = c.lch();
-            format!("lch({} {} {}{})", fmt_n(l, 1), fmt_n(ch, 1), fmt_n(h, 1), alpha)
+            format!(
+                "lch({} {} {}{})",
+                fmt_n(l, 1),
+                fmt_n(ch, 1),
+                fmt_n(h, 1),
+                alpha
+            )
         }
     }
 }
@@ -405,7 +524,11 @@ fn token(t: &str) -> Option<(f32, Unit)> {
 
 fn val(t: &str, pct_full: f32) -> Option<f32> {
     let (v, u) = token(t)?;
-    Some(if u == Unit::Percent { v / 100.0 * pct_full } else { v })
+    Some(if u == Unit::Percent {
+        v / 100.0 * pct_full
+    } else {
+        v
+    })
 }
 
 fn angle(t: &str) -> Option<f32> {
@@ -426,7 +549,10 @@ fn fraction(t: &str) -> Option<f32> {
 
 fn finish(lin: [f32; 3], alpha: f32, hint: f32) -> Parsed {
     let (rgb, clipped) = map_linear_to_srgb(lin);
-    Parsed { color: Color::from_rgb(rgb, alpha, hint), clipped }
+    Parsed {
+        color: Color::from_rgb(rgb, alpha, hint),
+        clipped,
+    }
 }
 
 const NAMED: &[(&str, u32)] = &[
@@ -464,25 +590,42 @@ const NAMED: &[(&str, u32)] = &[
 
 fn parse_named(s: &str, hint: f32) -> Option<Parsed> {
     if s == "transparent" {
-        return Some(Parsed { color: Color::from_rgb([0.0; 3], 0.0, hint), clipped: false });
+        return Some(Parsed {
+            color: Color::from_rgb([0.0; 3], 0.0, hint),
+            clipped: false,
+        });
     }
     let (_, hex) = NAMED.iter().find(|(n, _)| *n == s)?;
     let ch = |shift: u32| ((hex >> shift) & 0xff) as f32 / 255.0;
-    Some(Parsed { color: Color::from_rgb([ch(16), ch(8), ch(0)], 1.0, hint), clipped: false })
+    Some(Parsed {
+        color: Color::from_rgb([ch(16), ch(8), ch(0)], 1.0, hint),
+        clipped: false,
+    })
 }
 
 fn parse_hex(s: &str, hint: f32) -> Option<Parsed> {
     let h = s.strip_prefix('#').unwrap_or(s);
-    let d = h.chars().map(|c| c.to_digit(16)).collect::<Option<Vec<u32>>>()?;
+    let d = h
+        .chars()
+        .map(|c| c.to_digit(16))
+        .collect::<Option<Vec<u32>>>()?;
     let (r, g, b, a) = match d.len() {
         3 => (d[0] * 17, d[1] * 17, d[2] * 17, 255),
         4 => (d[0] * 17, d[1] * 17, d[2] * 17, d[3] * 17),
         6 => (d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5], 255),
-        8 => (d[0] * 16 + d[1], d[2] * 16 + d[3], d[4] * 16 + d[5], d[6] * 16 + d[7]),
+        8 => (
+            d[0] * 16 + d[1],
+            d[2] * 16 + d[3],
+            d[4] * 16 + d[5],
+            d[6] * 16 + d[7],
+        ),
         _ => return None,
     };
     let f = |x: u32| x as f32 / 255.0;
-    Some(Parsed { color: Color::from_rgb([f(r), f(g), f(b)], f(a), hint), clipped: false })
+    Some(Parsed {
+        color: Color::from_rgb([f(r), f(g), f(b)], f(a), hint),
+        clipped: false,
+    })
 }
 
 fn parse_function(name: &str, body: &str, hint: f32) -> Option<Parsed> {
@@ -490,7 +633,10 @@ fn parse_function(name: &str, body: &str, hint: f32) -> Option<Parsed> {
         Some((m, a)) => (m, Some(a.trim())),
         None => (body, None),
     };
-    let toks: Vec<&str> = main.split(|c: char| c.is_whitespace() || c == ',').filter(|t| !t.is_empty()).collect();
+    let toks: Vec<&str> = main
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|t| !t.is_empty())
+        .collect();
     let (c, alpha_tok) = match (toks.len(), alpha_tok) {
         (3, a) => (&toks[..3], a),
         (4, None) => (&toks[..3], Some(toks[3])),
@@ -504,7 +650,10 @@ fn parse_function(name: &str, body: &str, hint: f32) -> Option<Parsed> {
     match name {
         "rgb" | "rgba" => {
             let ch = |t: &str| val(t, 255.0).map(|v| (v / 255.0).clamp(0.0, 1.0));
-            Some(Parsed { color: Color::from_rgb([ch(c[0])?, ch(c[1])?, ch(c[2])?], alpha, hint), clipped: false })
+            Some(Parsed {
+                color: Color::from_rgb([ch(c[0])?, ch(c[1])?, ch(c[2])?], alpha, hint),
+                clipped: false,
+            })
         }
         "hsl" | "hsla" => Some(Parsed {
             color: Color::from_hsl(angle(c[0])?, fraction(c[1])?, fraction(c[2])?, alpha),
@@ -529,7 +678,11 @@ fn parse_function(name: &str, body: &str, hint: f32) -> Option<Parsed> {
                 let (ch, h) = (val(c[1], 0.4)?.max(0.0), angle(c[2])?.to_radians());
                 (ch * h.cos(), ch * h.sin())
             };
-            Some(finish(oklab_to_linear([l.clamp(0.0, 1.0), a, b]), alpha, hint))
+            Some(finish(
+                oklab_to_linear([l.clamp(0.0, 1.0), a, b]),
+                alpha,
+                hint,
+            ))
         }
         "lab" | "lch" => {
             let l = val(c[0], 100.0)?.clamp(0.0, 100.0);
@@ -611,7 +764,10 @@ pub fn spectral_locus() -> Vec<(f32, f32)> {
             let t = k as f32 / SUB as f32;
             let (t2, t3) = (t * t, t * t * t);
             let f = |a: f32, b: f32, c: f32, d: f32| {
-                0.5 * (2.0 * b + (-a + c) * t + (2.0 * a - 5.0 * b + 4.0 * c - d) * t2 + (-a + 3.0 * b - 3.0 * c + d) * t3)
+                0.5 * (2.0 * b
+                    + (-a + c) * t
+                    + (2.0 * a - 5.0 * b + 4.0 * c - d) * t2
+                    + (-a + 3.0 * b - 3.0 * c + d) * t3)
             };
             out.push((f(p0.0, p1.0, p2.0, p3.0), f(p0.1, p1.1, p2.1, p3.1)));
         }
@@ -630,7 +786,11 @@ pub fn xy_to_rgb(x: f32, y: f32) -> Rgb {
 pub fn rgb_to_xy(rgb: Rgb) -> (f32, f32) {
     let [x, y, z] = mat(&SRGB_TO_XYZ, rgb.map(srgb_to_linear));
     let sum = (x + y + z).max(1e-9);
-    if x + y + z < 1e-6 { D65_XY } else { (x / sum, y / sum) }
+    if x + y + z < 1e-6 {
+        D65_XY
+    } else {
+        (x / sum, y / sum)
+    }
 }
 
 #[cfg(test)]
@@ -643,7 +803,13 @@ mod tests {
 
     #[test]
     fn parses_common_syntaxes_to_the_same_colour() {
-        for s in ["#ff2e8c", "ff2e8c", "rgb(255 46 140)", "rgb(255, 46, 140)", "hsl(333deg 100% 59%)"] {
+        for s in [
+            "#ff2e8c",
+            "ff2e8c",
+            "rgb(255 46 140)",
+            "rgb(255, 46, 140)",
+            "hsl(333deg 100% 59%)",
+        ] {
             assert_eq!(hex(parse(s, 0.0).unwrap().color), "#ff2e8c", "{s}");
         }
     }
@@ -651,16 +817,28 @@ mod tests {
     #[test]
     fn formats_known_values() {
         let red = parse("#ff0000", 0.0).unwrap().color;
-        assert_eq!(format_color(red, ColorFormat::Oklch, true), "oklch(0.628 0.258 29.2)");
-        assert_eq!(format_color(red, ColorFormat::Lab, true), "lab(54.3 80.8 69.9)");
-        assert_eq!(format_color(red, ColorFormat::Hsl, true), "hsl(0deg 100% 50%)");
+        assert_eq!(
+            format_color(red, ColorFormat::Oklch, true),
+            "oklch(0.628 0.258 29.2)"
+        );
+        assert_eq!(
+            format_color(red, ColorFormat::Lab, true),
+            "lab(54.3 80.8 69.9)"
+        );
+        assert_eq!(
+            format_color(red, ColorFormat::Hsl, true),
+            "hsl(0deg 100% 50%)"
+        );
     }
 
     #[test]
     fn alpha_round_trips() {
         let c = parse("rgb(10 20 30 / 0.5)", 0.0).unwrap().color;
         assert!((c.a - 0.5).abs() < 1e-6);
-        assert_eq!(format_color(c, ColorFormat::Rgb, true), "rgb(10 20 30 / 0.5)");
+        assert_eq!(
+            format_color(c, ColorFormat::Rgb, true),
+            "rgb(10 20 30 / 0.5)"
+        );
     }
 
     #[test]

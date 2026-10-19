@@ -67,4 +67,3 @@ pub mod color_picker;
 
 #[cfg(feature = "color-picker")]
 pub use color_picker::zopra::*;
-

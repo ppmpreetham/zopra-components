@@ -131,7 +131,7 @@ impl DiscoverButtonState {
     }
 
     #[must_use]
-    pub fn expanded(&self) -> bool {
+    pub const fn expanded(&self) -> bool {
         self.hovered || (self.focused && self.focus_visible)
     }
 
@@ -170,7 +170,9 @@ impl DiscoverButtonState {
             self.enter_t = (self.enter_t + dt * 1000.0 / c.enter_ms.max(1.0)).min(1.0);
         }
 
-        let moving = self.enter_t < 1.0 || (self.fill_t - goal).abs() > 0.001 || (self.color_t - goal).abs() > 0.001;
+        let moving = self.enter_t < 1.0
+            || (self.fill_t - goal).abs() > 0.001
+            || (self.color_t - goal).abs() > 0.001;
         if moving {
             window.request_animation_frame();
         } else {
@@ -197,15 +199,33 @@ pub fn discover_button(
     on_click: Option<DiscoverClickCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(l) = label { cfg.label = l; }
-    if let Some(h) = href { cfg.href = Some(h); }
-    if let Some(h) = height { cfg.height = h; }
-    if let Some(fs) = fill_size { cfg.fill_size = fs; }
-    if let Some(is) = icon_size { cfg.icon_size = is; }
-    if let Some(s) = surface { cfg.surface = s; }
-    if let Some(f) = fill { cfg.fill = f; }
-    if let Some(tc) = text_color { cfg.text = tc; }
-    if let Some(at) = active_text { cfg.active_text = at; }
+    if let Some(l) = label {
+        cfg.label = l;
+    }
+    if let Some(h) = href {
+        cfg.href = Some(h);
+    }
+    if let Some(h) = height {
+        cfg.height = h;
+    }
+    if let Some(fs) = fill_size {
+        cfg.fill_size = fs;
+    }
+    if let Some(is) = icon_size {
+        cfg.icon_size = is;
+    }
+    if let Some(s) = surface {
+        cfg.surface = s;
+    }
+    if let Some(f) = fill {
+        cfg.fill = f;
+    }
+    if let Some(tc) = text_color {
+        cfg.text = tc;
+    }
+    if let Some(at) = active_text {
+        cfg.active_text = at;
+    }
 
     let state_holder = window.use_state(cx, |_window, cx| {
         cx.new(|cx| DiscoverButtonState::new(cfg.clone(), cx))

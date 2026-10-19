@@ -1,18 +1,18 @@
-use std::sync::Arc;
 use gpui_kit::component::{ActiveTheme as _, Icon, IconName, Root};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use std::sync::Arc;
 use zopra::{component, hooks::use_state, view};
 use zopra_components::{
-    fill_status_days, status_today, ColorPicker, Dial, DiscoverButton, Dock, DockEntry, DockItem,
-    DockPosition, EmojiPicker, MagneticButton, OptionWheel, PixelReveal, Preset, RangeSlider, Side,
-    StatusBars, StatusDay, StatusIncident,
+    ColorPicker, Dial, DiscoverButton, Dock, DockEntry, DockItem, DockPosition, EmojiPicker,
+    MagneticButton, OptionWheel, PixelReveal, Preset, RangeSlider, Side, StatusBars, StatusDay,
+    StatusIncident, fill_status_days, status_today,
 };
 
 #[allow(clippy::too_many_lines)]
 #[component]
 fn demo_app() {
-    let (tab, set_tab) = use_state( 0usize);
+    let (tab, set_tab) = use_state(0usize);
 
     // Color Picker state
     let (color_val, set_color_val) = use_state::<Hsla>(rgb(0xe11d48).into());
@@ -25,14 +25,14 @@ fn demo_app() {
     };
 
     // Range Slider state
-    let (range_val, set_range_val) = use_state( (200.0f32, 700.0f32));
+    let (range_val, set_range_val) = use_state((200.0f32, 700.0f32));
 
     // Dial state
-    let (dial_val, set_dial_val) = use_state( 42.0f32);
+    let (dial_val, set_dial_val) = use_state(42.0f32);
 
     // Emoji Picker state
-    let (selected_emoji, set_selected_emoji) = use_state( SharedString::from("✨"));
-    let (recent_emojis, set_recent_emojis) = use_state( {
+    let (selected_emoji, set_selected_emoji) = use_state(SharedString::from("✨"));
+    let (recent_emojis, set_recent_emojis) = use_state({
         vec![
             SharedString::from("✨"),
             SharedString::from("🚀"),
@@ -43,7 +43,7 @@ fn demo_app() {
     });
 
     // Option Wheel state
-    let (selected_option, set_selected_option) = use_state( SharedString::from("Rust"));
+    let (selected_option, set_selected_option) = use_state(SharedString::from("Rust"));
     let wheel_items = vec![
         "Rust".into(),
         "TypeScript".into(),
@@ -58,10 +58,10 @@ fn demo_app() {
     ];
 
     // Magnetic Button state
-    let (magnetic_clicks, set_magnetic_clicks) = use_state( 0usize);
+    let (magnetic_clicks, set_magnetic_clicks) = use_state(0usize);
 
     // Dock state
-    let (dock_last_clicked, set_dock_last_clicked) = use_state( SharedString::from("None"));
+    let (dock_last_clicked, set_dock_last_clicked) = use_state(SharedString::from("None"));
     let on_dock_click = {
         let set_clicked = set_dock_last_clicked;
         Arc::new(move |ix: usize, _window: &mut Window, cx: &mut App| {
@@ -89,34 +89,43 @@ fn demo_app() {
     let on_select = {
         let set_selected = set_selected_emoji.clone();
         let set_recent = set_recent_emojis;
-        Arc::new(move |emoji: &'static emojis::Emoji, _window: &mut Window, cx: &mut App| {
-            let str_val = SharedString::from(emoji.as_str());
-            set_selected.set(str_val.clone(), cx);
+        Arc::new(
+            move |emoji: &'static emojis::Emoji, _window: &mut Window, cx: &mut App| {
+                let str_val = SharedString::from(emoji.as_str());
+                set_selected.set(str_val.clone(), cx);
 
-            set_recent.update(|recent| {
-                recent.retain(|e| e != &str_val);
-                recent.insert(0, str_val);
-                if recent.len() > 8 {
-                    recent.truncate(8);
-                }
-            }, cx);
-        })
+                set_recent.update(
+                    |recent| {
+                        recent.retain(|e| e != &str_val);
+                        recent.insert(0, str_val);
+                        if recent.len() > 8 {
+                            recent.truncate(8);
+                        }
+                    },
+                    cx,
+                );
+            },
+        )
     };
 
     let on_wheel_change = {
         let set_selected = set_selected_option;
-        Arc::new(move |_idx: usize, item: SharedString, _window: &mut Window, cx: &mut App| {
-            set_selected.set(item, cx);
-        })
+        Arc::new(
+            move |_idx: usize, item: SharedString, _window: &mut Window, cx: &mut App| {
+                set_selected.set(item, cx);
+            },
+        )
     };
 
     #[allow(clippy::arc_with_non_send_sync)]
     let on_magnetic_click = {
         let set_clicks = set_magnetic_clicks;
         let clicks = magnetic_clicks.clone();
-        Arc::new(move |_ev: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            set_clicks.set(*clicks + 1, cx);
-        })
+        Arc::new(
+            move |_ev: &ClickEvent, _window: &mut Window, cx: &mut App| {
+                set_clicks.set(*clicks + 1, cx);
+            },
+        )
     };
 
     #[allow(clippy::arc_with_non_send_sync)]
@@ -130,13 +139,15 @@ fn demo_app() {
     #[allow(clippy::arc_with_non_send_sync)]
     let on_range_change = {
         let set_range = set_range_val;
-        Arc::new(move |low: f32, high: f32, _window: &mut Window, cx: &mut App| {
-            set_range.set((low, high), cx);
-        })
+        Arc::new(
+            move |low: f32, high: f32, _window: &mut Window, cx: &mut App| {
+                set_range.set((low, high), cx);
+            },
+        )
     };
 
     // Discover Button state
-    let (discover_clicks, set_discover_clicks) = use_state( 0usize);
+    let (discover_clicks, set_discover_clicks) = use_state(0usize);
     #[allow(clippy::arc_with_non_send_sync)]
     let on_discover_click = {
         let set_clicks = set_discover_clicks;
@@ -149,12 +160,16 @@ fn demo_app() {
     // Status Bars state
     let today = status_today();
     let from = today - chrono::Duration::days(89);
-    let status_history = fill_status_days(from, today, [
-        StatusDay::new(today - chrono::Duration::days(12))
-            .downtime(95)
-            .incident(StatusIncident::new("Database failover").minutes(95)),
-        StatusDay::new(today - chrono::Duration::days(3)).degraded(40),
-    ]);
+    let status_history = fill_status_days(
+        from,
+        today,
+        [
+            StatusDay::new(today - chrono::Duration::days(12))
+                .downtime(95)
+                .incident(StatusIncident::new("Database failover").minutes(95)),
+            StatusDay::new(today - chrono::Duration::days(3)).degraded(40),
+        ],
+    );
 
     let is_emoji_tab = *tab == 0;
     let is_wheel_tab = *tab == 1;

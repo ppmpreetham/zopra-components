@@ -4,7 +4,7 @@ pub mod gpui;
 pub mod zopra;
 
 pub use gpui::{
-    init, CometDial, CometDialEvent, DialConfig, Decrement, DecrementLarge, Increment,
-    IncrementLarge, ToMax, ToMin,
+    CometDial, CometDialEvent, Decrement, DecrementLarge, DialConfig, Increment, IncrementLarge,
+    ToMax, ToMin, init,
 };
 pub use zopra::*;

@@ -21,14 +21,14 @@
 use std::f32::consts::TAU;
 use std::time::Instant;
 
-use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _};
+use gpui_kit::component::{ActiveTheme as _, h_flex, v_flex};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::component;
 
 pub use super::gpui::{
-    day_status, day_uptime, fill_status_days, init as init_status_bars, status_today,
     StatusBars as GpuiStatusBars, StatusBarsConfig, StatusDay, StatusIncident, StatusLevel,
+    day_status, day_uptime, fill_status_days, init as init_status_bars, status_today,
 };
 use super::{Dismiss, First, Last, Next, NextWeek, Prev, PrevWeek};
 
@@ -57,7 +57,7 @@ fn fmt_percent(v: f32) -> String {
     format!("{}%", s.trim_end_matches('0').trim_end_matches('.'))
 }
 
-fn word(s: StatusLevel) -> &'static str {
+const fn word(s: StatusLevel) -> &'static str {
     match s {
         StatusLevel::Up => "Operational",
         StatusLevel::Degraded => "Degraded",
@@ -66,7 +66,7 @@ fn word(s: StatusLevel) -> &'static str {
     }
 }
 
-fn current_word(s: StatusLevel) -> &'static str {
+const fn current_word(s: StatusLevel) -> &'static str {
     match s {
         StatusLevel::Degraded => "Degraded performance",
         other => word(other),
@@ -225,7 +225,13 @@ impl StatusBarsState {
         self.point(self.active.unwrap_or(last), true, gap, cx);
     }
 
-    pub fn nav(&mut self, loading: bool, gap: f32, cx: &mut Context<Self>, to: impl FnOnce(usize, usize) -> usize) {
+    pub fn nav(
+        &mut self,
+        loading: bool,
+        gap: f32,
+        cx: &mut Context<Self>,
+        to: impl FnOnce(usize, usize) -> usize,
+    ) {
         if loading || self.shown.is_empty() {
             return;
         }
@@ -235,11 +241,17 @@ impl StatusBarsState {
         self.point(to(from, last).min(last), true, gap, cx);
     }
 
-    fn ping_active(&self, now: StatusLevel, pulse: bool, loading: bool) -> bool {
+    const fn ping_active(&self, now: StatusLevel, pulse: bool, loading: bool) -> bool {
         pulse && !loading && matches!(now, StatusLevel::Down | StatusLevel::Degraded)
     }
 
-    pub fn step(&mut self, now_status: StatusLevel, pulse: bool, loading: bool, window: &mut Window) {
+    pub fn step(
+        &mut self,
+        now_status: StatusLevel,
+        pulse: bool,
+        loading: bool,
+        window: &mut Window,
+    ) {
         let now = Instant::now();
         let dt = self
             .last_frame
@@ -298,25 +310,47 @@ pub fn status_bars(
     empty_color: Option<Hsla>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(m) = max_days { cfg.max_days = m; }
-    if let Some(w) = min_bar_width { cfg.min_bar_width = w; }
-    if let Some(c) = compact { cfg.compact = c; }
-    if let Some(l) = loading { cfg.loading = l; }
-    if let Some(h) = bar_height { cfg.bar_height = h; }
-    if let Some(g) = gap { cfg.gap = g; }
-    if let Some(t) = tooltip_width { cfg.tooltip_width = t; }
-    if let Some(p) = pulse { cfg.pulse = p; }
-    if let Some(u) = up_color { cfg.up_color = u; }
-    if let Some(d) = degraded_color { cfg.degraded_color = d; }
-    if let Some(d) = down_color { cfg.down_color = d; }
-    if let Some(e) = empty_color { cfg.empty_color = Some(e); }
+    if let Some(m) = max_days {
+        cfg.max_days = m;
+    }
+    if let Some(w) = min_bar_width {
+        cfg.min_bar_width = w;
+    }
+    if let Some(c) = compact {
+        cfg.compact = c;
+    }
+    if let Some(l) = loading {
+        cfg.loading = l;
+    }
+    if let Some(h) = bar_height {
+        cfg.bar_height = h;
+    }
+    if let Some(g) = gap {
+        cfg.gap = g;
+    }
+    if let Some(t) = tooltip_width {
+        cfg.tooltip_width = t;
+    }
+    if let Some(p) = pulse {
+        cfg.pulse = p;
+    }
+    if let Some(u) = up_color {
+        cfg.up_color = u;
+    }
+    if let Some(d) = degraded_color {
+        cfg.degraded_color = d;
+    }
+    if let Some(d) = down_color {
+        cfg.down_color = d;
+    }
+    if let Some(e) = empty_color {
+        cfg.empty_color = Some(e);
+    }
 
     let all_days = days.unwrap_or_default();
     let lbl = label.unwrap_or_else(|| SharedString::from("System Status"));
 
-    let state_holder = window.use_state(cx, |_window, cx| {
-        cx.new(|cx| StatusBarsState::new(cx))
-    });
+    let state_holder = window.use_state(cx, |_window, cx| cx.new(|cx| StatusBarsState::new(cx)));
 
     let state = state_holder.read(cx).clone();
 
@@ -324,7 +358,9 @@ pub fn status_bars(
         .or_else(|| all_days.last().map(day_status))
         .unwrap_or(StatusLevel::None);
 
-    let count = state.read(cx).visible_count(cfg.max_days, cfg.min_bar_width, cfg.gap);
+    let count = state
+        .read(cx)
+        .visible_count(cfg.max_days, cfg.min_bar_width, cfg.gap);
     if state.read(cx).dirty || count != state.read(cx).shown_count {
         state.update(cx, |this, _cx| {
             this.rebuild(&all_days, count);
@@ -350,7 +386,9 @@ pub fn status_bars(
         popover_fg: theme.popover_foreground,
     };
 
-    let ping_active = cfg.pulse && !cfg.loading && matches!(now_status, StatusLevel::Down | StatusLevel::Degraded);
+    let ping_active = cfg.pulse
+        && !cfg.loading
+        && matches!(now_status, StatusLevel::Down | StatusLevel::Degraded);
     let ping = ping_active.then(|| {
         let p = (state.read(cx).clock % PING_PERIOD) / PING_PERIOD;
         let eased = 1.0 - (1.0 - p).powi(3);
@@ -364,7 +402,11 @@ pub fn status_bars(
             .bg(st.dot(now_status).opacity(0.75 * (1.0 - p)))
     });
 
-    let dot = if cfg.loading { st.muted_fg.opacity(0.5) } else { st.dot(now_status) };
+    let dot = if cfg.loading {
+        st.muted_fg.opacity(0.5)
+    } else {
+        st.dot(now_status)
+    };
 
     let header = h_flex()
         .mb(px(10.0))
@@ -394,10 +436,15 @@ pub fn status_bars(
                         .when_some(ping, |d, ring| d.child(ring))
                         .child(div().size(px(6.0)).rounded_full().bg(dot)),
                 )
-                .child(if cfg.loading { "Checking…" } else { current_word(now_status) }),
+                .child(if cfg.loading {
+                    "Checking…"
+                } else {
+                    current_word(now_status)
+                }),
         );
 
-    let first = state.read(cx)
+    let first = state
+        .read(cx)
         .shown
         .first()
         .copied()
@@ -432,21 +479,34 @@ pub fn status_bars(
         1.0
     };
 
-    let bars: Vec<_> = state.read(cx)
+    let bars: Vec<_> = state
+        .read(cx)
         .shown
         .iter()
         .enumerate()
         .map(|(i, slot)| {
             let status = slot.map_or(StatusLevel::None, |ix| day_status(&all_days[ix]));
             let is_active = state.read(cx).active == Some(i);
-            let color = if cfg.loading { st.empty.opacity(pulse_loading) } else { st.bar(status) };
+            let color = if cfg.loading {
+                st.empty.opacity(pulse_loading)
+            } else {
+                st.bar(status)
+            };
             div()
                 .flex_1()
                 .min_w_0()
-                .h(px(if is_active { cfg.bar_height * 1.08 } else { cfg.bar_height }))
+                .h(px(if is_active {
+                    cfg.bar_height * 1.08
+                } else {
+                    cfg.bar_height
+                }))
                 .rounded(px(2.0))
                 .bg(color)
-                .opacity(if is_active { 1.0 } else { 1.0 - 0.65 * state.read(cx).dim })
+                .opacity(if is_active {
+                    1.0
+                } else {
+                    1.0 - 0.65 * state.read(cx).dim
+                })
         })
         .collect();
 
@@ -458,7 +518,8 @@ pub fn status_bars(
             0.0
         };
 
-        let day = state.read(cx)
+        let day = state
+            .read(cx)
             .shown
             .get(state.read(cx).tip_index)
             .copied()
@@ -466,7 +527,10 @@ pub fn status_bars(
             .map(|i| &all_days[i]);
         let status = day.map_or(StatusLevel::None, day_status);
 
-        let date_txt = day.map_or("Before tracking".to_string(), |d| d.date.format("%a, %b %-d").to_string());
+        let date_txt = day.map_or_else(
+            || "Before tracking".to_string(),
+            |d| d.date.format("%a, %b %-d").to_string(),
+        );
         let extra = day.and_then(|d| {
             if !d.incidents.is_empty() {
                 return None;
@@ -509,13 +573,29 @@ pub fn status_bars(
                     .mt(px(4.0))
                     .gap(px(6.0))
                     .text_color(st.muted_fg)
-                    .child(div().flex_none().size(px(6.0)).rounded_full().bg(st.dot(status)))
+                    .child(
+                        div()
+                            .flex_none()
+                            .size(px(6.0))
+                            .rounded_full()
+                            .bg(st.dot(status)),
+                    )
                     .child(word(status))
-                    .when_some(extra, |d, e| d.child(div().text_color(st.muted_fg.opacity(0.8)).child(e))),
+                    .when_some(extra, |d, e| {
+                        d.child(div().text_color(st.muted_fg.opacity(0.8)).child(e))
+                    }),
             )
-            .when(status == StatusLevel::Up && day.is_some_and(|d| d.incidents.is_empty()), |d| {
-                d.child(div().mt(px(4.0)).text_color(st.muted_fg.opacity(0.8)).child("No incidents"))
-            })
+            .when(
+                status == StatusLevel::Up && day.is_some_and(|d| d.incidents.is_empty()),
+                |d| {
+                    d.child(
+                        div()
+                            .mt(px(4.0))
+                            .text_color(st.muted_fg.opacity(0.8))
+                            .child("No incidents"),
+                    )
+                },
+            )
             .children(day.into_iter().flat_map(|d| d.incidents.iter()).map(|inc| {
                 div()
                     .mt(px(6.0))
@@ -556,25 +636,33 @@ pub fn status_bars(
         .on_action({
             let state = state_actions.clone();
             move |_: &Prev, _window, cx| {
-                state.update(cx, |this, cx| this.nav(loading_val, gap_val, cx, |f, _| f.saturating_sub(1)));
+                state.update(cx, |this, cx| {
+                    this.nav(loading_val, gap_val, cx, |f, _| f.saturating_sub(1))
+                });
             }
         })
         .on_action({
             let state = state_actions.clone();
             move |_: &Next, _window, cx| {
-                state.update(cx, |this, cx| this.nav(loading_val, gap_val, cx, |f, _| f + 1));
+                state.update(cx, |this, cx| {
+                    this.nav(loading_val, gap_val, cx, |f, _| f + 1)
+                });
             }
         })
         .on_action({
             let state = state_actions.clone();
             move |_: &PrevWeek, _window, cx| {
-                state.update(cx, |this, cx| this.nav(loading_val, gap_val, cx, |f, _| f.saturating_sub(7)));
+                state.update(cx, |this, cx| {
+                    this.nav(loading_val, gap_val, cx, |f, _| f.saturating_sub(7))
+                });
             }
         })
         .on_action({
             let state = state_actions.clone();
             move |_: &NextWeek, _window, cx| {
-                state.update(cx, |this, cx| this.nav(loading_val, gap_val, cx, |f, _| f + 7));
+                state.update(cx, |this, cx| {
+                    this.nav(loading_val, gap_val, cx, |f, _| f + 7)
+                });
             }
         })
         .on_action({

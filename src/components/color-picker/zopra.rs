@@ -20,7 +20,9 @@ use gpui_kit::*;
 use zopra::component;
 
 pub use super::color::{Color, ColorFormat, Parsed};
-pub use super::gpui::{ColorPicker as GpuiColorPicker, ColorPickerConfig, ColorPickerEvent, PickerMode};
+pub use super::gpui::{
+    ColorPicker as GpuiColorPicker, ColorPickerConfig, ColorPickerEvent, PickerMode,
+};
 
 pub type ColorChangeCallback = Arc<dyn Fn(Hsla, &mut App)>;
 pub type SwatchesChangeCallback = Arc<dyn Fn(Vec<Option<Hsla>>, &mut App)>;
@@ -85,8 +87,9 @@ pub fn color_picker(
         let on_change_end = on_change_end.clone();
         let on_swatches_changed = on_swatches_changed.clone();
 
-        cx.subscribe(&state, move |_this, _emitter, ev: &ColorPickerEvent, cx| {
-            match ev {
+        cx.subscribe(
+            &state,
+            move |_this, _emitter, ev: &ColorPickerEvent, cx| match ev {
                 ColorPickerEvent::Change(hsla) => {
                     if let Some(cb) = on_change.as_ref() {
                         cb(*hsla, cx);
@@ -102,11 +105,9 @@ pub fn color_picker(
                         cb(swatches.clone(), cx);
                     }
                 }
-            }
-        })
+            },
+        )
     });
 
-    div()
-        .relative()
-        .child(state)
+    div().relative().child(state)
 }

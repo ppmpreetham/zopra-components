@@ -7,11 +7,11 @@
 
 use std::{cell::Cell, rc::Rc, time::Instant};
 
-use gpui_kit::{
-    canvas, div, point, prelude::*, px, Bounds, ClickEvent, Context, EventEmitter, IntoElement,
-    MouseMoveEvent, Pixels, Point, Render, SharedString, Size, Window,
-};
 use gpui_kit::component::ActiveTheme as _;
+use gpui_kit::{
+    Bounds, ClickEvent, Context, EventEmitter, IntoElement, MouseMoveEvent, Pixels, Point, Render,
+    SharedString, Size, Window, canvas, div, point, prelude::*, px,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct MagneticConfig {
@@ -30,7 +30,10 @@ pub struct MagneticConfig {
 impl Default for MagneticConfig {
     fn default() -> Self {
         Self {
-            size: Size { width: px(120.), height: px(44.) },
+            size: Size {
+                width: px(120.),
+                height: px(44.),
+            },
             radius: px(40.),
             strength: 0.35,
             max_offset: px(14.),
@@ -151,9 +154,12 @@ impl Render for MagneticButton {
                 }
             }))
             .child(
-                canvas(move |bounds, _, _| bounds_cell.set(bounds), |_, (), _, _| {})
-                    .absolute()
-                    .size_full(),
+                canvas(
+                    move |bounds, _, _| bounds_cell.set(bounds),
+                    |_, (), _, _| {},
+                )
+                .absolute()
+                .size_full(),
             )
             .child(
                 div()

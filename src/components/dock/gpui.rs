@@ -16,15 +16,19 @@
     clippy::large_enum_variant
 )]
 
-use std::{cell::Cell, rc::Rc, time::{Duration, Instant}};
-
-use gpui_kit::{
-    canvas, div, prelude::*, px, red, relative, white, AnyElement, App, Bounds, ClickEvent,
-    Context, Div, Hsla, MouseMoveEvent, Pixels, Point, Render, SharedString, Window,
+use std::{
+    cell::Cell,
+    rc::Rc,
+    time::{Duration, Instant},
 };
+
 use gpui_kit::component::{
-    menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem},
     ActiveTheme as _, Icon,
+    menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem},
+};
+use gpui_kit::{
+    AnyElement, App, Bounds, ClickEvent, Context, Div, Hsla, MouseMoveEvent, Pixels, Point, Render,
+    SharedString, Window, canvas, div, prelude::*, px, red, relative, white,
 };
 
 const TAU_MOUSE: f32 = 0.045;
@@ -50,12 +54,12 @@ pub enum DockPosition {
 
 impl DockPosition {
     #[must_use]
-    pub fn horizontal(self) -> bool {
+    pub const fn horizontal(self) -> bool {
         matches!(self, Self::Bottom | Self::Top)
     }
     /// Items hug the end side of the cross axis (bottom / right).
     #[must_use]
-    pub fn at_end(self) -> bool {
+    pub const fn at_end(self) -> bool {
         matches!(self, Self::Bottom | Self::Right)
     }
 }
@@ -110,22 +114,36 @@ impl Default for DockConfig {
 
 #[derive(Clone)]
 pub enum MenuEntry {
-    Item { label: SharedString, checked: bool, on_click: Option<Callback> },
+    Item {
+        label: SharedString,
+        checked: bool,
+        on_click: Option<Callback>,
+    },
     Separator,
-    Submenu { label: SharedString, items: Rc<[MenuEntry]> },
+    Submenu {
+        label: SharedString,
+        items: Rc<[Self]>,
+    },
 }
 
 impl MenuEntry {
     pub fn item(label: impl Into<SharedString>) -> Self {
-        Self::Item { label: label.into(), checked: false, on_click: None }
+        Self::Item {
+            label: label.into(),
+            checked: false,
+            on_click: None,
+        }
     }
-    pub fn separator() -> Self {
+    pub const fn separator() -> Self {
         Self::Separator
     }
-    pub fn submenu(label: impl Into<SharedString>, items: impl IntoIterator<Item = MenuEntry>) -> Self {
-        Self::Submenu { label: label.into(), items: items.into_iter().collect() }
+    pub fn submenu(label: impl Into<SharedString>, items: impl IntoIterator<Item = Self>) -> Self {
+        Self::Submenu {
+            label: label.into(),
+            items: items.into_iter().collect(),
+        }
     }
-    pub fn checked(mut self, value: bool) -> Self {
+    pub const fn checked(mut self, value: bool) -> Self {
         if let Self::Item { checked, .. } = &mut self {
             *checked = value;
         }
@@ -163,11 +181,11 @@ impl DockItem {
             bounds: Rc::default(),
         }
     }
-    pub fn active(mut self, active: bool) -> Self {
+    pub const fn active(mut self, active: bool) -> Self {
         self.active = active;
         self
     }
-    pub fn badge(mut self, count: u32) -> Self {
+    pub const fn badge(mut self, count: u32) -> Self {
         self.badge = Some(count);
         self
     }
@@ -225,7 +243,7 @@ struct Palette {
 }
 
 impl Dock {
-    pub fn new(entries: Vec<DockEntry>, config: DockConfig, _cx: &mut Context<Self>) -> Self {
+    pub const fn new(entries: Vec<DockEntry>, config: DockConfig, _cx: &mut Context<Self>) -> Self {
         Self {
             entries,
             config,
@@ -278,7 +296,11 @@ impl Dock {
     }
 
     fn pointer(&mut self, pos: Point<Pixels>, cx: &mut Context<Self>) {
-        let m = if self.config.position.horizontal() { f32::from(pos.x) } else { f32::from(pos.y) };
+        let m = if self.config.position.horizontal() {
+            f32::from(pos.x)
+        } else {
+            f32::from(pos.y)
+        };
         self.mouse_t = m;
         if !self.tracking {
             self.tracking = true;
@@ -295,7 +317,13 @@ impl Dock {
         self.wake(cx);
     }
 
-    fn clicked(&mut self, ix: usize, cb: Option<Callback>, window: &mut Window, cx: &mut Context<Self>) {
+    fn clicked(
+        &mut self,
+        ix: usize,
+        cb: Option<Callback>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.config.bounce {
             self.bounces.retain(|(i, _)| *i != ix);
             self.bounces.push((ix, Instant::now()));
@@ -317,14 +345,22 @@ impl Dock {
         let ease = |tau: f32| 1.0 - (-dt / tau).exp();
 
         let want = if self.inside { 1.0 } else { 0.0 };
-        let want_hide = if self.config.auto_hide && !self.inside { 1.0 } else { 0.0 };
+        let want_hide = if self.config.auto_hide && !self.inside {
+            1.0
+        } else {
+            0.0
+        };
 
         self.intensity += (want - self.intensity) * ease(TAU_INTENSITY);
         self.mouse_s += (self.mouse_t - self.mouse_s) * ease(TAU_MOUSE);
         self.hide += (want_hide - self.hide) * ease(TAU_HIDE);
         self.bounces.retain(|(_, t)| t.elapsed() < BOUNCE_TIME);
 
-        let mouse_gap = if self.inside { (self.mouse_t - self.mouse_s).abs() } else { 0.0 };
+        let mouse_gap = if self.inside {
+            (self.mouse_t - self.mouse_s).abs()
+        } else {
+            0.0
+        };
         let moving = (want - self.intensity).abs() > 0.002
             || (want_hide - self.hide).abs() > 0.002
             || mouse_gap > 0.1
@@ -349,20 +385,33 @@ impl Dock {
     }
 
     fn hop(&self, ix: usize) -> f32 {
-        self.bounces.iter().find(|(i, _)| *i == ix).map_or(0.0, |(_, t0)| {
-            let t = t0.elapsed().as_secs_f32();
-            BOUNCE_HEIGHT * (-t * 5.0).exp() * (t * 14.0).sin().abs()
-        })
+        self.bounces
+            .iter()
+            .find(|(i, _)| *i == ix)
+            .map_or(0.0, |(_, t0)| {
+                let t = t0.elapsed().as_secs_f32();
+                BOUNCE_HEIGHT * (-t * 5.0).exp() * (t * 14.0).sin().abs()
+            })
     }
 
     // ---- element builders --------------------------------------------------
 
-    fn render_item(&self, ix: usize, item: &DockItem, st: &Palette, cx: &mut Context<Self>) -> AnyElement {
+    fn render_item(
+        &self,
+        ix: usize,
+        item: &DockItem,
+        st: &Palette,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let c = &self.config;
         let pos = c.position;
 
         let b = item.bounds.get();
-        let center = if pos.horizontal() { f32::from(b.center().x) } else { f32::from(b.center().y) };
+        let center = if pos.horizontal() {
+            f32::from(b.center().x)
+        } else {
+            f32::from(b.center().y)
+        };
         let size = self.size_for(center);
         let hop = self.hop(ix);
         let slot = item.bounds.clone();
@@ -377,16 +426,23 @@ impl Dock {
             .justify_center()
             .size(px(size))
             .rounded(px(c.roundness.clamp(0.0, 1.0) * size / 2.0))
-            .when(c.tiles, |d| d.bg(st.tile_bg).border_1().border_color(st.border).shadow_sm())
+            .when(c.tiles, |d| {
+                d.bg(st.tile_bg)
+                    .border_1()
+                    .border_color(st.border)
+                    .shadow_sm()
+            })
             .text_color(st.fg)
             .cursor_pointer()
             .map(|d| edge_margin(d, pos, hop))
-            .child(canvas(move |bounds, _, _| slot.set(bounds), |_, (), _, _| {}).absolute().size_full())
+            .child(
+                canvas(move |bounds, _, _| slot.set(bounds), |_, (), _, _| {})
+                    .absolute()
+                    .size_full(),
+            )
             .child(item.icon.clone().size(px(size * 0.5)))
             .when(c.show_indicators && item.active, |d| {
-                d.child(edge_slot(pos, 8.0).child(
-                    div().size(px(4.0)).rounded_full().bg(st.accent),
-                ))
+                d.child(edge_slot(pos, 8.0).child(div().size(px(4.0)).rounded_full().bg(st.accent)))
             })
             .when(c.show_badges, |d| match item.badge.filter(|n| *n > 0) {
                 Some(n) => d.child(
@@ -404,24 +460,30 @@ impl Dock {
                         .bg(st.badge)
                         .text_color(white())
                         .text_size(px(10.0))
-                        .child(if n > 99 { "99+".to_string() } else { n.to_string() }),
+                        .child(if n > 99 {
+                            "99+".to_string()
+                        } else {
+                            n.to_string()
+                        }),
                 ),
                 None => d,
             })
             .when(c.show_labels && self.hovered == Some(ix), |d| {
-                d.child(label_slot(pos, 8.0).child(
-                    div()
-                        .px_2()
-                        .py_1()
-                        .rounded_md()
-                        .whitespace_nowrap()
-                        .text_xs()
-                        .bg(st.label_bg)
-                        .text_color(st.label_fg)
-                        .border_1()
-                        .border_color(st.border)
-                        .child(item.label.clone()),
-                ))
+                d.child(
+                    label_slot(pos, 8.0).child(
+                        div()
+                            .px_2()
+                            .py_1()
+                            .rounded_md()
+                            .whitespace_nowrap()
+                            .text_xs()
+                            .bg(st.label_bg)
+                            .text_color(st.label_fg)
+                            .border_1()
+                            .border_color(st.border)
+                            .child(item.label.clone()),
+                    ),
+                )
             })
             .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
                 if *hovered {
@@ -439,7 +501,8 @@ impl Dock {
             el.into_any_element()
         } else {
             let menu = item.menu.clone();
-            el.context_menu(move |m, window, cx| build_menu(m, &menu, window, cx)).into_any_element()
+            el.context_menu(move |m, window, cx| build_menu(m, &menu, window, cx))
+                .into_any_element()
         }
     }
 
@@ -447,7 +510,11 @@ impl Dock {
         let c = &self.config;
         let len = c.base_item_size * 0.7;
         let line = div().flex_none().bg(st.border);
-        let line = if c.position.horizontal() { line.w(px(1.0)).h(px(len)) } else { line.h(px(1.0)).w(px(len)) };
+        let line = if c.position.horizontal() {
+            line.w(px(1.0)).h(px(len))
+        } else {
+            line.h(px(1.0)).w(px(len))
+        };
         edge_margin(line, c.position, (c.base_item_size - len) / 2.0).into_any_element()
     }
 }
@@ -476,10 +543,30 @@ fn edge_slot(pos: DockPosition, off: f32) -> Div {
 fn label_slot(pos: DockPosition, gap: f32) -> Div {
     let d = div().absolute().flex();
     match pos {
-        DockPosition::Bottom => d.left_0().right_0().bottom(relative(1.0)).mb(px(gap)).justify_center(),
-        DockPosition::Top => d.left_0().right_0().top(relative(1.0)).mt(px(gap)).justify_center(),
-        DockPosition::Left => d.top_0().bottom_0().left(relative(1.0)).ml(px(gap)).items_center(),
-        DockPosition::Right => d.top_0().bottom_0().right(relative(1.0)).mr(px(gap)).items_center(),
+        DockPosition::Bottom => d
+            .left_0()
+            .right_0()
+            .bottom(relative(1.0))
+            .mb(px(gap))
+            .justify_center(),
+        DockPosition::Top => d
+            .left_0()
+            .right_0()
+            .top(relative(1.0))
+            .mt(px(gap))
+            .justify_center(),
+        DockPosition::Left => d
+            .top_0()
+            .bottom_0()
+            .left(relative(1.0))
+            .ml(px(gap))
+            .items_center(),
+        DockPosition::Right => d
+            .top_0()
+            .bottom_0()
+            .right(relative(1.0))
+            .mr(px(gap))
+            .items_center(),
     }
 }
 
@@ -491,14 +578,20 @@ fn build_menu(
 ) -> PopupMenu {
     entries.iter().fold(menu, |menu, entry| match entry {
         MenuEntry::Separator => menu.separator(),
-        MenuEntry::Item { label, checked, on_click } => {
+        MenuEntry::Item {
+            label,
+            checked,
+            on_click,
+        } => {
             let cb = on_click.clone();
             menu.item(
-                PopupMenuItem::new(label.clone()).checked(*checked).on_click(move |_, window, cx| {
-                    if let Some(cb) = &cb {
-                        cb(window, cx);
-                    }
-                }),
+                PopupMenuItem::new(label.clone())
+                    .checked(*checked)
+                    .on_click(move |_, window, cx| {
+                        if let Some(cb) = &cb {
+                            cb(window, cx);
+                        }
+                    }),
             )
         }
         MenuEntry::Submenu { label, items } => {
@@ -571,14 +664,22 @@ impl Render for Dock {
             .flex_none()
             .flex()
             .gap(px(c.gap))
-            .map(|d| if horiz { d.flex_row().h(px(cross)).px(px(pad)) } else { d.flex_col().w(px(cross)).py(px(pad)) })
+            .map(|d| {
+                if horiz {
+                    d.flex_row().h(px(cross)).px(px(pad))
+                } else {
+                    d.flex_col().w(px(cross)).py(px(pad))
+                }
+            })
             .map(|d| match pos {
                 DockPosition::Bottom => d.items_end().pb(px(pad)),
                 DockPosition::Top => d.items_start().pt(px(pad)),
                 DockPosition::Left => d.items_start().pl(px(pad)),
                 DockPosition::Right => d.items_end().pr(px(pad)),
             })
-            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.pointer(ev.position, cx)))
+            .on_mouse_move(
+                cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.pointer(ev.position, cx)),
+            )
             .on_hover(cx.listener(|this, hovered: &bool, _, cx| this.set_inside(*hovered, cx)))
             .child(background)
             .children(items);

@@ -93,13 +93,10 @@ pub fn pixel_reveal(
         let font_clone = font_rc.clone();
         let style_clone = resolved_style.clone();
         let opts_clone = opts.clone();
-        cx.new(|_cx| {
-            GpuiPixelReveal::with_spans(spans_clone, font_clone, style_clone, opts_clone)
-        })
+        cx.new(|_cx| GpuiPixelReveal::with_spans(spans_clone, font_clone, style_clone, opts_clone))
     });
 
     let state = state_holder.read(cx).clone();
-
 
     state.update(cx, |this, cx| {
         if this.font.family != font_rc.family {

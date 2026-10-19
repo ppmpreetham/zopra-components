@@ -126,16 +126,26 @@ pub fn magnetic_button(
     on_click: Option<MagneticClickCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(w) = width { cfg.size.width = px(w); }
-    if let Some(h) = height { cfg.size.height = px(h); }
-    if let Some(r) = radius { cfg.radius = px(r); }
-    if let Some(s) = strength { cfg.strength = s; }
-    if let Some(m) = max_offset { cfg.max_offset = px(m); }
-    if let Some(resp) = responsiveness { cfg.responsiveness = resp; }
+    if let Some(w) = width {
+        cfg.size.width = px(w);
+    }
+    if let Some(h) = height {
+        cfg.size.height = px(h);
+    }
+    if let Some(r) = radius {
+        cfg.radius = px(r);
+    }
+    if let Some(s) = strength {
+        cfg.strength = s;
+    }
+    if let Some(m) = max_offset {
+        cfg.max_offset = px(m);
+    }
+    if let Some(resp) = responsiveness {
+        cfg.responsiveness = resp;
+    }
 
-    let state_holder = window.use_state(cx, |_window, cx| {
-        cx.new(|_cx| MagneticButtonState::new())
-    });
+    let state_holder = window.use_state(cx, |_window, cx| cx.new(|_cx| MagneticButtonState::new()));
 
     let state = state_holder.read(cx).clone();
 

@@ -3,15 +3,15 @@
 use std::ops::Range;
 
 use emojis::{Emoji, Group, SkinTone};
-use gpui_kit::{
-    div, prelude::*, px, uniform_list, App, ClickEvent, Context, Entity, EventEmitter,
-    FocusHandle, Focusable, IntoElement, Render, ScrollStrategy, Subscription,
-    UniformListScrollHandle, Window,
-};
 use gpui_kit::component::{
-    h_flex,
+    ActiveTheme as _, h_flex,
     input::{Input, InputEvent, InputState},
-    v_flex, ActiveTheme as _,
+    v_flex,
+};
+use gpui_kit::{
+    App, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, Render,
+    ScrollStrategy, Subscription, UniformListScrollHandle, Window, div, prelude::*, px,
+    uniform_list,
 };
 
 const COLUMNS: usize = 8;

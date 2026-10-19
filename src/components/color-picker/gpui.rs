@@ -21,25 +21,26 @@
 
 use std::{cell::Cell, f32::consts::SQRT_2, rc::Rc, sync::Arc, time::Duration};
 
-use gpui_kit::{
-    black, canvas, div, fill, Corners, PaintQuad, img, linear_color_stop, linear_gradient, point, prelude::*, px, size,
-    transparent_black, white, Background, Bounds, ClipboardItem, Context, DispatchPhase, Div, Entity,
-    EventEmitter, FontWeight, Focusable as _, Hsla, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, ObjectFit, PathBuilder, Pixels, Point, Render, RenderImage, Rgba, SharedString, Stateful,
-    Subscription, Task, Window,
-};
 use gpui_kit::component::{
+    ActiveTheme as _, IconName, Sizable as _,
     button::{Button, ButtonVariants as _},
     h_flex,
     input::{Input, InputEvent, InputState},
-    v_flex, ActiveTheme as _, IconName, Sizable as _,
+    v_flex,
+};
+use gpui_kit::{
+    Background, Bounds, ClipboardItem, Context, Corners, DispatchPhase, Div, Entity, EventEmitter,
+    Focusable as _, FontWeight, Hsla, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, ObjectFit, PaintQuad, PathBuilder, Pixels, Point, Render, RenderImage, Rgba,
+    SharedString, Stateful, Subscription, Task, Window, black, canvas, div, fill, img,
+    linear_color_stop, linear_gradient, point, prelude::*, px, size, transparent_black, white,
 };
 use image::{Frame, RgbaImage};
 use smallvec::SmallVec;
 
 use super::color::{
-    format_color, hsv_to_rgb, parse, rgb_to_xy, spectral_locus, xy_to_rgb, Color, ColorFormat, Rgb,
-    D65_XY, SRGB_PRIMARIES,
+    Color, ColorFormat, D65_XY, Rgb, SRGB_PRIMARIES, format_color, hsv_to_rgb, parse, rgb_to_xy,
+    spectral_locus, xy_to_rgb,
 };
 
 const PAD: f32 = 12.0;
@@ -90,7 +91,12 @@ impl Default for ColorPickerConfig {
             initial: "#ff2e8c".into(),
             mode: PickerMode::Wheel,
             show_mode_switcher: true,
-            formats: vec![ColorFormat::Hex, ColorFormat::Rgb, ColorFormat::Hsl, ColorFormat::Oklch],
+            formats: vec![
+                ColorFormat::Hex,
+                ColorFormat::Rgb,
+                ColorFormat::Hsl,
+                ColorFormat::Oklch,
+            ],
             alpha: true,
             hex_hash: true,
             width: 280.0,
@@ -141,7 +147,12 @@ struct Geom {
 fn geom(s: f32) -> Geom {
     let rad = s / 2.0 - 0.5;
     let r_i = rad * RING_INNER;
-    Geom { c: s / 2.0, rad, r_i, side: r_i * SQRT_2 * 0.94 }
+    Geom {
+        c: s / 2.0,
+        rad,
+        r_i,
+        side: r_i * SQRT_2 * 0.94,
+    }
 }
 
 /// Uniform scale + x offset that fit x∈[0,0.8], y∈[0,0.9] into an s×s box.
@@ -183,15 +194,22 @@ impl EventEmitter<ColorPickerEvent> for ColorPicker {}
 
 impl ColorPicker {
     pub fn new(config: ColorPickerConfig, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let color = parse(&config.initial, 0.0).map_or_else(|| Color::new(333.0, 0.82, 1.0, 1.0), |p| p.color);
+        let color = parse(&config.initial, 0.0)
+            .map_or_else(|| Color::new(333.0, 0.82, 1.0, 1.0), |p| p.color);
 
         let mut rows = Vec::new();
         let mut subs = Vec::new();
         for (ix, &format) in config.formats.iter().enumerate() {
             let text = format_color(color, format, config.hex_hash);
             let input = cx.new(|cx| InputState::new(window, cx).default_value(text));
-            subs.push(cx.subscribe(&input, move |this, _, ev: &InputEvent, cx| this.on_input(ix, ev, cx)));
-            rows.push(Row { format, input, invalid: false });
+            subs.push(cx.subscribe(&input, move |this, _, ev: &InputEvent, cx| {
+                this.on_input(ix, ev, cx)
+            }));
+            rows.push(Row {
+                format,
+                input,
+                invalid: false,
+            });
         }
 
         let mut this = Self {
@@ -243,7 +261,11 @@ impl ColorPicker {
 
     pub fn set_hsla(&mut self, hsla: Hsla, cx: &mut Context<Self>) {
         let rgba: Rgba = hsla.into();
-        self.apply(Color::from_rgb([rgba.r, rgba.g, rgba.b], rgba.a, self.color.h), false, cx);
+        self.apply(
+            Color::from_rgb([rgba.r, rgba.g, rgba.b], rgba.a, self.color.h),
+            false,
+            cx,
+        );
     }
 
     pub fn set_mode(&mut self, mode: PickerMode, cx: &mut Context<Self>) {
@@ -267,7 +289,6 @@ impl ColorPicker {
             .collect();
         cx.notify();
     }
-
 
     fn apply(&mut self, color: Color, clipped: bool, cx: &mut Context<Self>) {
         if color != self.color || clipped != self.clipped {
@@ -333,7 +354,9 @@ impl ColorPicker {
         cx.write_to_clipboard(ClipboardItem::new_string(self.text_for(ix)));
         self.copied = Some(ix);
         self.copied_task = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(1200)).await;
+            cx.background_executor()
+                .timer(Duration::from_millis(1200))
+                .await;
             this.update(cx, |this, cx| {
                 this.copied = None;
                 cx.notify();
@@ -344,7 +367,9 @@ impl ColorPicker {
     }
 
     fn swatch_click(&mut self, ix: usize, cx: &mut Context<Self>) {
-        if let Some(c) = self.swatches[ix] { self.apply(c, false, cx) } else {
+        if let Some(c) = self.swatches[ix] {
+            self.apply(c, false, cx)
+        } else {
             self.swatches[ix] = Some(self.color);
             self.emit_swatches(cx);
         }
@@ -357,7 +382,9 @@ impl ColorPicker {
     }
 
     fn emit_swatches(&mut self, cx: &mut Context<Self>) {
-        cx.emit(ColorPickerEvent::SwatchesChanged(self.swatches.iter().map(|s| s.map(hsla_of)).collect()));
+        cx.emit(ColorPickerEvent::SwatchesChanged(
+            self.swatches.iter().map(|s| s.map(hsla_of)).collect(),
+        ));
         cx.notify();
     }
 
@@ -373,9 +400,16 @@ impl ColorPicker {
             PickerMode::Ring => {
                 let g = geom(s);
                 let b = self.surface.get();
-                let (dx, dy) = (f32::from(pos.x - b.origin.x) - g.c, f32::from(pos.y - b.origin.y) - g.c);
+                let (dx, dy) = (
+                    f32::from(pos.x - b.origin.x) - g.c,
+                    f32::from(pos.y - b.origin.y) - g.c,
+                );
                 let in_square = dx.abs() <= g.side / 2.0 + 4.0 && dy.abs() <= g.side / 2.0 + 4.0;
-                if !in_square && dx.hypot(dy) >= g.r_i * 0.95 { Target::RingHue } else { Target::Square }
+                if !in_square && dx.hypot(dy) >= g.r_i * 0.95 {
+                    Target::RingHue
+                } else {
+                    Target::Square
+                }
             }
         };
         self.start_drag(target, pos, cx);
@@ -465,21 +499,30 @@ impl ColorPicker {
         let (bg, active_bg, muted_fg) = (theme.muted, theme.background, theme.muted_foreground);
         let current = self.config.mode;
 
-        h_flex().p(px(2.0)).gap(px(2.0)).rounded_lg().bg(bg).children(PickerMode::ALL.map(|m| {
-            div()
-                .id(("cp-mode", m as usize))
-                .flex_1()
-                .py(px(4.0))
-                .rounded_md()
-                .text_center()
-                .text_size(px(11.0))
-                .font_weight(FontWeight::MEDIUM)
-                .cursor_pointer()
-                .text_color(if m == current { theme.foreground } else { muted_fg })
-                .when(m == current, |d| d.bg(active_bg).shadow_sm())
-                .child(m.label())
-                .on_click(cx.listener(move |this, _, _, cx| this.set_mode(m, cx)))
-        }))
+        h_flex()
+            .p(px(2.0))
+            .gap(px(2.0))
+            .rounded_lg()
+            .bg(bg)
+            .children(PickerMode::ALL.map(|m| {
+                div()
+                    .id(("cp-mode", m as usize))
+                    .flex_1()
+                    .py(px(4.0))
+                    .rounded_md()
+                    .text_center()
+                    .text_size(px(11.0))
+                    .font_weight(FontWeight::MEDIUM)
+                    .cursor_pointer()
+                    .text_color(if m == current {
+                        theme.foreground
+                    } else {
+                        muted_fg
+                    })
+                    .when(m == current, |d| d.bg(active_bg).shadow_sm())
+                    .child(m.label())
+                    .on_click(cx.listener(move |this, _, _, cx| this.set_mode(m, cx)))
+            }))
     }
 
     fn render_surface(&self, cx: &Context<Self>) -> Stateful<Div> {
@@ -500,36 +543,56 @@ impl ColorPicker {
                 MouseButton::Left,
                 cx.listener(|this, ev: &MouseDownEvent, _, cx| this.surface_down(ev.position, cx)),
             )
-            .child(canvas(move |b, _, _| probe.set(b), |_, (), _, _| {}).absolute().size_full());
+            .child(
+                canvas(move |b, _, _| probe.set(b), |_, (), _, _| {})
+                    .absolute()
+                    .size_full(),
+            );
 
         let root = match &self.images[mode as usize] {
             Some(image) => root.child(
-                img(image.clone()).absolute().top_0().left_0().size(px(s)).object_fit(ObjectFit::Fill),
+                img(image.clone())
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size(px(s))
+                    .object_fit(ObjectFit::Fill),
             ),
-            None => root.child(div().absolute().top_0().left_0().size(px(s)).rounded_full().bg(placeholder)),
+            None => root.child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size(px(s))
+                    .rounded_full()
+                    .bg(placeholder),
+            ),
         };
 
         match mode {
             PickerMode::Wheel => {
                 let h = c.h.to_radians();
                 let (mx, my) = (g.c + c.s * g.rad * h.cos(), g.c - c.s * g.rad * h.sin());
-                root
-                    .child(
-                        div()
-                            .absolute()
-                            .top(px(1.0))
-                            .left(px(1.0))
-                            .size(px(s - 2.0))
-                            .rounded_full()
-                            .bg(black().opacity(1.0 - c.v)),
-                    )
-                    .child(marker(mx, my, 18.0, solid(c)))
+                root.child(
+                    div()
+                        .absolute()
+                        .top(px(1.0))
+                        .left(px(1.0))
+                        .size(px(s - 2.0))
+                        .rounded_full()
+                        .bg(black().opacity(1.0 - c.v)),
+                )
+                .child(marker(mx, my, 18.0, solid(c)))
             }
             PickerMode::Ring => {
                 let th = c.h.to_radians();
                 let mid = f32::midpoint(g.rad, g.r_i);
                 let thick = g.rad - g.r_i;
-                let pure = solid(Color { s: 1.0, v: 1.0, ..c });
+                let pure = solid(Color {
+                    s: 1.0,
+                    v: 1.0,
+                    ..c
+                });
                 let (sx, sy) = (g.c - g.side / 2.0, g.c - g.side / 2.0);
 
                 let square = div()
@@ -540,28 +603,49 @@ impl ColorPicker {
                     .rounded(px(4.0))
                     .bg(pure)
                     .child(
-                        div().absolute().size_full().rounded(px(4.0)).bg(linear_gradient(
-                            90.0,
-                            linear_color_stop(white(), 0.0),
-                            linear_color_stop(white().opacity(0.0), 1.0),
-                        )),
+                        div()
+                            .absolute()
+                            .size_full()
+                            .rounded(px(4.0))
+                            .bg(linear_gradient(
+                                90.0,
+                                linear_color_stop(white(), 0.0),
+                                linear_color_stop(white().opacity(0.0), 1.0),
+                            )),
                     )
                     .child(
-                        div().absolute().size_full().rounded(px(4.0)).bg(linear_gradient(
-                            180.0,
-                            linear_color_stop(black().opacity(0.0), 0.0),
-                            linear_color_stop(black(), 1.0),
-                        )),
+                        div()
+                            .absolute()
+                            .size_full()
+                            .rounded(px(4.0))
+                            .bg(linear_gradient(
+                                180.0,
+                                linear_color_stop(black().opacity(0.0), 0.0),
+                                linear_color_stop(black(), 1.0),
+                            )),
                     );
 
                 root.child(square)
-                    .child(marker(g.c - mid * th.sin(), g.c - mid * th.cos(), (thick * 0.9).max(16.0), pure))
-                    .child(marker(sx + c.s * g.side, sy + (1.0 - c.v) * g.side, 14.0, solid(c)))
+                    .child(marker(
+                        g.c - mid * th.sin(),
+                        g.c - mid * th.cos(),
+                        (thick * 0.9).max(16.0),
+                        pure,
+                    ))
+                    .child(marker(
+                        sx + c.s * g.side,
+                        sy + (1.0 - c.v) * g.side,
+                        14.0,
+                        solid(c),
+                    ))
             }
             PickerMode::Cie => {
                 let (sc, xoff) = cie_xform(s);
                 let (x, y) = rgb_to_xy(Color { v: 1.0, ..c }.to_rgb());
-                let (line, tri) = (cx.theme().foreground.opacity(0.7), cx.theme().foreground.opacity(0.45));
+                let (line, tri) = (
+                    cx.theme().foreground.opacity(0.7),
+                    cx.theme().foreground.opacity(0.45),
+                );
                 root.child(cie_overlay(self.locus.clone(), s, line, tri))
                     .child(marker(xoff + x * sc, s - y * sc, 16.0, solid(c)))
             }
@@ -589,9 +673,15 @@ impl ColorPicker {
             .cursor_pointer()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(move |this, ev: &MouseDownEvent, _, cx| this.start_drag(target, ev.position, cx)),
+                cx.listener(move |this, ev: &MouseDownEvent, _, cx| {
+                    this.start_drag(target, ev.position, cx)
+                }),
             )
-            .child(canvas(move |b, _, _| probe.set(b), |_, (), _, _| {}).absolute().size_full())
+            .child(
+                canvas(move |b, _, _| probe.set(b), |_, (), _, _| {})
+                    .absolute()
+                    .size_full(),
+            )
             .child(
                 div()
                     .absolute()
@@ -639,14 +729,22 @@ impl ColorPicker {
                     .min_w_0()
                     .rounded_md()
                     .border_1()
-                    .border_color(if row.invalid { danger } else { transparent_black() })
+                    .border_color(if row.invalid {
+                        danger
+                    } else {
+                        transparent_black()
+                    })
                     .child(Input::new(&row.input).small()),
             )
             .child(
                 Button::new(("cp-copy", ix))
                     .ghost()
                     .xsmall()
-                    .icon(if copied { IconName::Check } else { IconName::Copy })
+                    .icon(if copied {
+                        IconName::Check
+                    } else {
+                        IconName::Copy
+                    })
                     .on_click(cx.listener(move |this, _, _, cx| this.copy(ix, cx))),
             )
     }
@@ -656,7 +754,8 @@ impl ColorPicker {
         let theme = cx.theme();
         let (border, muted_fg) = (theme.border, theme.muted_foreground);
         let cols = self.config.swatch_cols.max(1);
-        let cell = ((self.surface_size() - 40.0 - 10.0 - 4.0 * (cols as f32 - 1.0)) / cols as f32).max(10.0);
+        let cell = ((self.surface_size() - 40.0 - 10.0 - 4.0 * (cols as f32 - 1.0)) / cols as f32)
+            .max(10.0);
 
         let preview = div()
             .relative()
@@ -666,34 +765,58 @@ impl ColorPicker {
             .border_1()
             .border_color(border)
             .child(checker())
-            .child(div().absolute().size_full().rounded(px(6.0)).bg(hsla_of(self.color)));
-
-        let grid = v_flex().gap(px(4.0)).children(self.swatches.chunks(cols).enumerate().map(|(r, chunk)| {
-            h_flex().gap(px(4.0)).children(chunk.iter().enumerate().map(move |(i, sw)| {
-                let ix = r * cols + i;
+            .child(
                 div()
-                    .id(("cp-swatch", ix))
-                    .flex_none()
-                    .size(px(cell))
-                    .rounded(px(4.0))
-                    .border_1()
-                    .border_color(border)
-                    .cursor_pointer()
-                    .map(|d| match sw {
-                        Some(c) => d.bg(hsla_of(*c)),
-                        None => d.hover(move |s| s.bg(border.opacity(0.35))),
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| this.swatch_click(ix, cx)))
-                    .on_mouse_down(
-                        MouseButton::Right,
-                        cx.listener(move |this, _: &MouseDownEvent, _, cx| this.swatch_remove(ix, cx)),
-                    )
-            }))
-        }));
+                    .absolute()
+                    .size_full()
+                    .rounded(px(6.0))
+                    .bg(hsla_of(self.color)),
+            );
 
-        v_flex().gap(px(6.0)).child(h_flex().gap(px(10.0)).items_start().child(preview).child(grid)).child(
-            div().text_size(px(10.0)).text_color(muted_fg).child("Click an empty slot to save · right-click to remove"),
-        )
+        let grid = v_flex()
+            .gap(px(4.0))
+            .children(self.swatches.chunks(cols).enumerate().map(|(r, chunk)| {
+                h_flex()
+                    .gap(px(4.0))
+                    .children(chunk.iter().enumerate().map(move |(i, sw)| {
+                        let ix = r * cols + i;
+                        div()
+                            .id(("cp-swatch", ix))
+                            .flex_none()
+                            .size(px(cell))
+                            .rounded(px(4.0))
+                            .border_1()
+                            .border_color(border)
+                            .cursor_pointer()
+                            .map(|d| match sw {
+                                Some(c) => d.bg(hsla_of(*c)),
+                                None => d.hover(move |s| s.bg(border.opacity(0.35))),
+                            })
+                            .on_click(cx.listener(move |this, _, _, cx| this.swatch_click(ix, cx)))
+                            .on_mouse_down(
+                                MouseButton::Right,
+                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                    this.swatch_remove(ix, cx)
+                                }),
+                            )
+                    }))
+            }));
+
+        v_flex()
+            .gap(px(6.0))
+            .child(
+                h_flex()
+                    .gap(px(10.0))
+                    .items_start()
+                    .child(preview)
+                    .child(grid),
+            )
+            .child(
+                div()
+                    .text_size(px(10.0))
+                    .text_color(muted_fg)
+                    .child("Click an empty slot to save · right-click to remove"),
+            )
     }
 }
 
@@ -759,16 +882,39 @@ impl Render for ColorPicker {
         let value_slider_el = if mode == PickerMode::Ring {
             None
         } else {
-            Some(self.slider("cp-value", self.value_bar.clone(), value_track, false, c.v, solid(c), Target::Value, cx))
+            Some(self.slider(
+                "cp-value",
+                self.value_bar.clone(),
+                value_track,
+                false,
+                c.v,
+                solid(c),
+                Target::Value,
+                cx,
+            ))
         };
 
         let alpha_slider_el = if self.config.alpha {
-            Some(self.slider("cp-alpha", self.alpha_bar.clone(), alpha_track, true, c.a, hsla_of(c), Target::Alpha, cx))
+            Some(self.slider(
+                "cp-alpha",
+                self.alpha_bar.clone(),
+                alpha_track,
+                true,
+                c.a,
+                hsla_of(c),
+                Target::Alpha,
+                cx,
+            ))
         } else {
             None
         };
 
-        let rows_el: Vec<_> = self.rows.iter().enumerate().map(|(ix, row)| self.render_row(ix, row, cx)).collect();
+        let rows_el: Vec<_> = self
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(ix, row)| self.render_row(ix, row, cx))
+            .collect();
 
         let palette_el = self.render_palette(cx);
 
@@ -788,12 +934,9 @@ impl Render for ColorPicker {
             .when_some(alpha_slider_el, gpui_kit::ParentElement::child)
             .child(v_flex().gap(px(6.0)).children(rows_el))
             .when(self.clipped, |d| {
-                d.child(
-                    div()
-                        .text_size(px(10.5))
-                        .text_color(muted_fg)
-                        .child("That colour is outside sRGB, so it was mapped to the nearest displayable one."),
-                )
+                d.child(div().text_size(px(10.5)).text_color(muted_fg).child(
+                    "That colour is outside sRGB, so it was mapped to the nearest displayable one.",
+                ))
             })
             .child(palette_el)
             .child(drag_layer)
@@ -826,7 +969,10 @@ fn checker() -> impl IntoElement {
                 let mut x = if row % 2 == 0 { cell } else { 0.0 };
                 while x < w {
                     let sz = size(px(cell.min(w - x)), px(cell.min(h - y)));
-                    window.paint_quad(fill(Bounds::new(bounds.origin + point(px(x), px(y)), sz), dark));
+                    window.paint_quad(fill(
+                        Bounds::new(bounds.origin + point(px(x), px(y)), sz),
+                        dark,
+                    ));
                     x += cell * 2.0;
                 }
                 y += cell;
@@ -848,7 +994,11 @@ fn cie_overlay(locus: Arc<Vec<(f32, f32)>>, s: f32, line: Hsla, tri: Hsla) -> im
             let stroke = |window: &mut Window, pts: &[(f32, f32)], width: f32, color: Hsla| {
                 let mut b = PathBuilder::stroke(px(width));
                 for (i, &(x, y)) in pts.iter().enumerate() {
-                    if i == 0 { b.move_to(at(x, y)) } else { b.line_to(at(x, y)) }
+                    if i == 0 {
+                        b.move_to(at(x, y))
+                    } else {
+                        b.line_to(at(x, y))
+                    }
                 }
                 b.close();
                 if let Ok(path) = b.build() {
@@ -861,7 +1011,10 @@ fn cie_overlay(locus: Arc<Vec<(f32, f32)>>, s: f32, line: Hsla, tri: Hsla) -> im
             let (wx, wy) = D65_XY;
             let r = 3.0;
             let dot = Bounds::centered_at(at(wx, wy), size(px(r * 2.0), px(r * 2.0)));
-            window.paint_quad(PaintQuad { corner_radii: Corners::all(px(r)), ..fill(dot, tri) });
+            window.paint_quad(PaintQuad {
+                corner_radii: Corners::all(px(r)),
+                ..fill(dot, tri)
+            });
         },
     )
     .absolute()
@@ -890,7 +1043,14 @@ fn raster_wheel(n: u32) -> Raster {
                 continue;
             }
             let hue = (-dy).atan2(dx).to_degrees().rem_euclid(360.0);
-            put(&mut bgra, n, x, y, hsv_to_rgb(hue, (r / rad).min(1.0), 1.0), cov);
+            put(
+                &mut bgra,
+                n,
+                x,
+                y,
+                hsv_to_rgb(hue, (r / rad).min(1.0), 1.0),
+                cov,
+            );
         }
     }
     Raster { w: n, h: n, bgra }
@@ -918,7 +1078,10 @@ fn raster_ring(n: u32) -> Raster {
 fn raster_cie(n: u32, locus: &[(f32, f32)]) -> Raster {
     let nf = n as f32;
     let (sc, xoff) = cie_xform(nf);
-    let poly: Vec<(f32, f32)> = locus.iter().map(|&(x, y)| (xoff + x * sc, nf - y * sc)).collect();
+    let poly: Vec<(f32, f32)> = locus
+        .iter()
+        .map(|&(x, y)| (xoff + x * sc, nf - y * sc))
+        .collect();
     let mut bgra = vec![0u8; (n * n * 4) as usize];
     let mut xs: Vec<f32> = Vec::with_capacity(8);
 
@@ -947,5 +1110,7 @@ fn raster_cie(n: u32, locus: &[(f32, f32)]) -> Raster {
 
 fn to_image(r: Raster) -> Option<Arc<RenderImage>> {
     let buf = RgbaImage::from_raw(r.w, r.h, r.bgra)?;
-    Some(Arc::new(RenderImage::new(SmallVec::<[Frame; 1]>::from_elem(Frame::new(buf), 1))))
+    Some(Arc::new(RenderImage::new(
+        SmallVec::<[Frame; 1]>::from_elem(Frame::new(buf), 1),
+    )))
 }

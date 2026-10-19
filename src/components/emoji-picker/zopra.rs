@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use emojis::{Emoji, Group, SkinTone};
 use gpui_kit::component::input::{InputEvent, InputState};
-use gpui_kit::component::{h_flex, ActiveTheme as _};
+use gpui_kit::component::{ActiveTheme as _, h_flex};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::{component, view};
@@ -86,7 +86,11 @@ impl EmojiPickerState {
 }
 
 /// A reactive, customizable, virtualized emoji picker component.
-#[allow(clippy::too_many_arguments, clippy::too_many_lines, clippy::cast_precision_loss)]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::cast_precision_loss
+)]
 #[component]
 pub fn emoji_picker(
     on_select: Option<EmojiSelectCallback>,

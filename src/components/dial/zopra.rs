@@ -18,14 +18,14 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use gpui_kit::component::{h_flex, ActiveTheme as _};
+use gpui_kit::component::{ActiveTheme as _, h_flex};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 use zopra::component;
 
 pub use super::gpui::{
-    init as init_dial, CometDialEvent, Decrement, DecrementLarge, DialConfig, Increment,
-    IncrementLarge, ToMax, ToMin,
+    CometDialEvent, Decrement, DecrementLarge, DialConfig, Increment, IncrementLarge, ToMax, ToMin,
+    init as init_dial,
 };
 
 const CONTEXT: &str = "CometDial";
@@ -127,7 +127,7 @@ impl CometDialState {
     }
 
     #[must_use]
-    pub fn is_dragging(&self) -> bool {
+    pub const fn is_dragging(&self) -> bool {
         self.grip.is_some()
     }
 
@@ -169,7 +169,10 @@ impl CometDialState {
         let b = self.bounds;
         let scale = (f32::from(b.size.width).min(f32::from(b.size.height)) / 200.0).max(1e-6);
         let c = b.center();
-        (f32::from(pos.x - c.x) / scale, f32::from(pos.y - c.y) / scale)
+        (
+            f32::from(pos.x - c.x) / scale,
+            f32::from(pos.y - c.y) / scale,
+        )
     }
 
     fn angle_at(&self, pos: Point<Pixels>, side: &mut Option<Edge>) -> f32 {
@@ -184,7 +187,11 @@ impl CometDialState {
                 None => 0.0,
             };
         } else {
-            *side = Some(if rel > sweep / 2.0 { Edge::Hi } else { Edge::Lo });
+            *side = Some(if rel > sweep / 2.0 {
+                Edge::Hi
+            } else {
+                Edge::Lo
+            });
         }
         self.config.min + rel / sweep * self.range()
     }
@@ -252,7 +259,13 @@ impl CometDialState {
         let at = self.angle_at(pos, &mut side);
         let mut hist = VecDeque::with_capacity(4);
         hist.push_back((Instant::now(), at));
-        self.grip = Some(Grip { at: None, hist, side, moved: false, down: pos });
+        self.grip = Some(Grip {
+            at: None,
+            hist,
+            side,
+            moved: false,
+            down: pos,
+        });
 
         self.commit(at, None, on_change, None, window, cx);
         let (to, bounce, v) = (self.snap(at), self.config.tap_bounce, self.vel);
@@ -372,7 +385,11 @@ impl CometDialState {
                 } else {
                     prev + (at - prev) * (1.0 - (-dt / TAU_FOLLOW).exp())
                 };
-                self.vel = if dt > 0.0 { (self.reading - prev) / dt } else { 0.0 };
+                self.vel = if dt > 0.0 {
+                    (self.reading - prev) / dt
+                } else {
+                    0.0
+                };
             }
             None => self.step_spring(dt),
         }
@@ -423,7 +440,15 @@ pub struct DialFrame {
     pub dragging: bool,
 }
 
-fn stroke_arc(window: &mut Window, c: Point<Pixels>, r: f32, a0: f32, a1: f32, w: f32, color: Hsla) {
+fn stroke_arc(
+    window: &mut Window,
+    c: Point<Pixels>,
+    r: f32,
+    a0: f32,
+    a1: f32,
+    w: f32,
+    color: Hsla,
+) {
     if a1 - a0 < 0.01 || color.a <= 0.003 {
         return;
     }
@@ -480,7 +505,12 @@ pub fn paint_dial(window: &mut Window, bounds: Bounds<Pixels>, fr: &DialFrame) {
         }
     }
 
-    dot(window, point_at(c, r, fr.ang), fr.thickness * 1.8 * scale, fr.accent);
+    dot(
+        window,
+        point_at(c, r, fr.ang),
+        fr.thickness * 1.8 * scale,
+        fr.accent,
+    );
 }
 
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
@@ -501,15 +531,33 @@ pub fn dial(
     on_end: Option<DialEndCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(s) = size { cfg.size = s; }
-    if let Some(m) = min { cfg.min = m; }
-    if let Some(m) = max { cfg.max = m; }
-    if let Some(st) = step { cfg.step = st; }
-    if let Some(u) = unit { cfg.unit = u; }
-    if let Some(sp) = speed { cfg.speed = sp; }
-    if let Some(acc) = accent { cfg.accent = Some(acc); }
-    if let Some(i) = ink { cfg.ink = Some(i); }
-    if let Some(dis) = disabled { cfg.disabled = dis; }
+    if let Some(s) = size {
+        cfg.size = s;
+    }
+    if let Some(m) = min {
+        cfg.min = m;
+    }
+    if let Some(m) = max {
+        cfg.max = m;
+    }
+    if let Some(st) = step {
+        cfg.step = st;
+    }
+    if let Some(u) = unit {
+        cfg.unit = u;
+    }
+    if let Some(sp) = speed {
+        cfg.speed = sp;
+    }
+    if let Some(acc) = accent {
+        cfg.accent = Some(acc);
+    }
+    if let Some(i) = ink {
+        cfg.ink = Some(i);
+    }
+    if let Some(dis) = disabled {
+        cfg.disabled = dis;
+    }
 
     let initial_val = value.unwrap_or(cfg.min);
     let state_holder = window.use_state(cx, |_window, cx| {
@@ -555,7 +603,11 @@ pub fn dial(
         ang: start + f * c.sweep,
         f,
         s: (state.read(cx).smooth_v.abs() / V_FULL).clamp(0.0, 1.0),
-        dir: if state.read(cx).smooth_v < 0.0 { -1.0 } else { 1.0 },
+        dir: if state.read(cx).smooth_v < 0.0 {
+            -1.0
+        } else {
+            1.0
+        },
         thickness: c.thickness,
         comet_width: c.comet_width,
         comet_reach: c.comet_reach,
@@ -566,7 +618,7 @@ pub fn dial(
 
     let size_px = c.size;
     let is_disabled = c.disabled;
-    let unit_str = c.unit.clone();
+    let unit_str = c.unit;
     let display_text = state.read(cx).text.clone();
     let focus_handle = state.read(cx).focus_handle.clone();
 
@@ -606,40 +658,76 @@ pub fn dial(
             state_inc.update(cx, |this, cx| {
                 let step = this.key_step();
                 let next = this.value + step;
-                this.nudge(next, on_change_inc.as_ref(), on_end_inc.as_ref(), window, cx);
+                this.nudge(
+                    next,
+                    on_change_inc.as_ref(),
+                    on_end_inc.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_action(move |_: &Decrement, window, cx| {
             state_dec.update(cx, |this, cx| {
                 let step = this.key_step();
                 let prev = this.value - step;
-                this.nudge(prev, on_change_dec.as_ref(), on_end_dec.as_ref(), window, cx);
+                this.nudge(
+                    prev,
+                    on_change_dec.as_ref(),
+                    on_end_dec.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_action(move |_: &IncrementLarge, window, cx| {
             state_inc_lg.update(cx, |this, cx| {
                 let step = this.key_step() * 10.0;
                 let next = this.value + step;
-                this.nudge(next, on_change_inc_lg.as_ref(), on_end_inc_lg.as_ref(), window, cx);
+                this.nudge(
+                    next,
+                    on_change_inc_lg.as_ref(),
+                    on_end_inc_lg.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_action(move |_: &DecrementLarge, window, cx| {
             state_dec_lg.update(cx, |this, cx| {
                 let step = this.key_step() * 10.0;
                 let prev = this.value - step;
-                this.nudge(prev, on_change_dec_lg.as_ref(), on_end_dec_lg.as_ref(), window, cx);
+                this.nudge(
+                    prev,
+                    on_change_dec_lg.as_ref(),
+                    on_end_dec_lg.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_action(move |_: &ToMin, window, cx| {
             state_min.update(cx, |this, cx| {
                 let min_val = this.config.min;
-                this.nudge(min_val, on_change_min.as_ref(), on_end_min.as_ref(), window, cx);
+                this.nudge(
+                    min_val,
+                    on_change_min.as_ref(),
+                    on_end_min.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_action(move |_: &ToMax, window, cx| {
             state_max.update(cx, |this, cx| {
                 let max_val = this.config.max;
-                this.nudge(max_val, on_change_max.as_ref(), on_end_max.as_ref(), window, cx);
+                this.nudge(
+                    max_val,
+                    on_change_max.as_ref(),
+                    on_end_max.as_ref(),
+                    window,
+                    cx,
+                );
             });
         })
         .on_mouse_down(MouseButton::Left, move |ev: &MouseDownEvent, window, cx| {

@@ -26,7 +26,7 @@ use zopra::{component, hooks::use_state, view};
 
 #[component]
 fn demo() {
-    let (clicks, set_clicks) = use_state(|| 0usize);
+    let (clicks, set_clicks) = use_state( 0usize);
 
     let on_click = {
         let set_clicks = set_clicks.clone();

@@ -22,8 +22,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::component::{
-    button::Button,
-    h_flex, v_flex, ActiveTheme as _, Disableable as _, IconName, Sizable as _,
+    ActiveTheme as _, Disableable as _, IconName, Sizable as _, button::Button, h_flex, v_flex,
 };
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -47,7 +46,7 @@ pub enum RangeThumb {
 
 impl RangeThumb {
     #[must_use]
-    pub fn ix(self) -> usize {
+    pub const fn ix(self) -> usize {
         self as usize
     }
 }
@@ -92,7 +91,10 @@ pub struct RangeSliderState {
 impl RangeSliderState {
     #[must_use]
     pub fn new(config: RangeSliderConfig, cx: &mut Context<Self>) -> Self {
-        let focus = [cx.focus_handle().tab_stop(true), cx.focus_handle().tab_stop(true)];
+        let focus = [
+            cx.focus_handle().tab_stop(true),
+            cx.focus_handle().tab_stop(true),
+        ];
         let mut this = Self {
             low: 0.0,
             high: 0.0,
@@ -307,7 +309,11 @@ impl RangeSliderState {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let cur = if which == RangeThumb::Low { self.low } else { self.high };
+        let cur = if which == RangeThumb::Low {
+            self.low
+        } else {
+            self.high
+        };
         let step = if self.config.step > 0.0 {
             self.config.step
         } else {
@@ -341,7 +347,9 @@ impl RangeSliderState {
     }
 
     fn ghost_target(&self) -> Option<(f32, f32)> {
-        let p = self.preview.filter(|_| self.drag.is_none() && self.config.hover_preview)?;
+        let p = self
+            .preview
+            .filter(|_| self.drag.is_none() && self.config.hover_preview)?;
         if p < self.low {
             let (a, b) = (self.x_of(p), self.x_of(self.low));
             Some((a, b - a))
@@ -393,7 +401,8 @@ impl RangeSliderState {
             None => self.ghost_on = false,
         }
 
-        let num_moving = (self.low - self.shown_low).abs() > 0.05 || (self.high - self.shown_high).abs() > 0.05;
+        let num_moving =
+            (self.low - self.shown_low).abs() > 0.05 || (self.high - self.shown_high).abs() > 0.05;
 
         if num_moving || grow_moving || ghost_moving {
             window.request_animation_frame();
@@ -409,7 +418,6 @@ impl RangeSliderState {
     }
 }
 
-/// A reactive dual-thumb range slider component with ghost hover preview, numeric easing, and ticks.
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 #[component]
 pub fn range_slider(
@@ -428,16 +436,36 @@ pub fn range_slider(
     on_end: Option<RangeChangeCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(m) = min { cfg.min = m; }
-    if let Some(m) = max { cfg.max = m; }
-    if let Some(s) = step { cfg.step = s; }
-    if let Some(l) = label { cfg.label = l; }
-    if let Some(p) = prefix { cfg.prefix = p; }
-    if let Some(t) = ticks { cfg.ticks = t; }
-    if let Some(c) = clear_button { cfg.clear_button = c; }
-    if let Some(h) = hover_preview { cfg.hover_preview = h; }
-    if let Some(l) = low { cfg.default_low = l; }
-    if let Some(h) = high { cfg.default_high = h; }
+    if let Some(m) = min {
+        cfg.min = m;
+    }
+    if let Some(m) = max {
+        cfg.max = m;
+    }
+    if let Some(s) = step {
+        cfg.step = s;
+    }
+    if let Some(l) = label {
+        cfg.label = l;
+    }
+    if let Some(p) = prefix {
+        cfg.prefix = p;
+    }
+    if let Some(t) = ticks {
+        cfg.ticks = t;
+    }
+    if let Some(c) = clear_button {
+        cfg.clear_button = c;
+    }
+    if let Some(h) = hover_preview {
+        cfg.hover_preview = h;
+    }
+    if let Some(l) = low {
+        cfg.default_low = l;
+    }
+    if let Some(h) = high {
+        cfg.default_high = h;
+    }
 
     let state_holder = window.use_state(cx, |_window, cx| {
         cx.new(|cx| RangeSliderState::new(cfg.clone(), cx))
@@ -445,11 +473,13 @@ pub fn range_slider(
 
     let state = state_holder.read(cx).clone();
 
-    // Sync external low/high changes if provided and not currently dragging
     if let (Some(ext_low), Some(ext_high)) = (low, high) {
         let is_dragging = state.read(cx).drag.is_some();
         let (cur_low, cur_high) = (state.read(cx).low, state.read(cx).high);
-        if !is_dragging && ((ext_low - cur_low).abs() > f32::EPSILON || (ext_high - cur_high).abs() > f32::EPSILON) {
+        if !is_dragging
+            && ((ext_low - cur_low).abs() > f32::EPSILON
+                || (ext_high - cur_high).abs() > f32::EPSILON)
+        {
             state.update(cx, |this, cx| {
                 let s_low = this.snap(ext_low);
                 let s_high = this.snap(ext_high).max(s_low);
@@ -511,7 +541,6 @@ pub fn range_slider(
         .collect();
     let prefix_str = c.prefix.clone();
 
-    // Render low thumb
     let render_thumb_el = |which: RangeThumb, window: &Window, cx: &App| {
         let i = which.ix();
         let value = if which == RangeThumb::Low {
@@ -580,17 +609,38 @@ pub fn range_slider(
             })
             .on_action(move |_: &IncLarge, window, cx| {
                 state_inc_lg.update(cx, |this, cx| {
-                    this.nudge(which, 10.0, oc_inc_lg.as_ref(), oe_inc_lg.as_ref(), window, cx);
+                    this.nudge(
+                        which,
+                        10.0,
+                        oc_inc_lg.as_ref(),
+                        oe_inc_lg.as_ref(),
+                        window,
+                        cx,
+                    );
                 });
             })
             .on_action(move |_: &DecLarge, window, cx| {
                 state_dec_lg.update(cx, |this, cx| {
-                    this.nudge(which, -10.0, oc_dec_lg.as_ref(), oe_dec_lg.as_ref(), window, cx);
+                    this.nudge(
+                        which,
+                        -10.0,
+                        oc_dec_lg.as_ref(),
+                        oe_dec_lg.as_ref(),
+                        window,
+                        cx,
+                    );
                 });
             })
             .on_action(move |_: &ToStart, window, cx| {
                 state_start.update(cx, |this, cx| {
-                    this.jump(which, false, oc_start.as_ref(), oe_start.as_ref(), window, cx);
+                    this.jump(
+                        which,
+                        false,
+                        oc_start.as_ref(),
+                        oe_start.as_ref(),
+                        window,
+                        cx,
+                    );
                 });
             })
             .on_action(move |_: &ToEnd, window, cx| {
@@ -675,7 +725,6 @@ pub fn range_slider(
             .absolute()
             .size_full(),
         )
-        // Track background
         .child(
             div()
                 .absolute()
@@ -686,7 +735,6 @@ pub fn range_slider(
                 .rounded_full()
                 .bg(track_bg),
         )
-        // Selected range fill
         .child(
             div()
                 .absolute()
@@ -697,7 +745,6 @@ pub fn range_slider(
                 .rounded_full()
                 .bg(primary),
         )
-        // Ghost preview
         .when(ghost_on && ghost_w > 0.0, |d| {
             d.child(
                 div()

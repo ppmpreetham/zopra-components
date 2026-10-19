@@ -8,14 +8,17 @@
     clippy::redundant_closure_for_method_calls
 )]
 
-use std::{f32::consts::FRAC_PI_2, time::{Duration, Instant}};
-
-use gpui_kit::{
-    div, prelude::*, px, relative, App, ClickEvent, Context, EventEmitter, FocusHandle,
-    Focusable, FontWeight, Hsla, KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Render, Rgba, ScrollWheelEvent, SharedString, Task, Window,
+use std::{
+    f32::consts::FRAC_PI_2,
+    time::{Duration, Instant},
 };
+
 use gpui_kit::component::ActiveTheme as _;
+use gpui_kit::{
+    App, ClickEvent, Context, EventEmitter, FocusHandle, Focusable, FontWeight, Hsla, KeyBinding,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, Rgba,
+    ScrollWheelEvent, SharedString, Task, Window, div, prelude::*, px, relative,
+};
 
 use super::{Next, Prev};
 
@@ -146,7 +149,7 @@ impl OptionWheel {
     }
 
     #[must_use]
-    pub fn selected(&self) -> usize {
+    pub const fn selected(&self) -> usize {
         self.selected
     }
 
@@ -181,7 +184,10 @@ impl OptionWheel {
         let idx = (v.round() as isize).rem_euclid(n as isize) as usize;
         if idx != self.selected {
             self.selected = idx;
-            cx.emit(OptionChanged { index: idx, item: self.items[idx].clone() });
+            cx.emit(OptionChanged {
+                index: idx,
+                item: self.items[idx].clone(),
+            });
         }
 
         if !self.animating {
@@ -294,7 +300,10 @@ impl Render for OptionWheel {
 
                 let (x, y) = if radius > 0.0 {
                     let ang = (d * tilt).clamp(-FRAC_PI_2, FRAC_PI_2);
-                    (-mirror * radius * (1.0 - ang.cos()) * c.curve, radius * ang.sin())
+                    (
+                        -mirror * radius * (1.0 - ang.cos()) * c.curve,
+                        radius * ang.sin(),
+                    )
                 } else {
                     (0.0, d * row_h)
                 };
@@ -364,12 +373,17 @@ impl Render for OptionWheel {
                 cx.listener(|this, ev: &MouseDownEvent, _, _| {
                     if this.config.draggable {
                         this.dragged = false;
-                        this.drag = Some(Drag { start_y: ev.position.y, start_target: this.target });
+                        this.drag = Some(Drag {
+                            start_y: ev.position.y,
+                            start_target: this.target,
+                        });
                     }
                 }),
             )
             .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| {
-                let Some(drag) = this.drag.as_ref() else { return };
+                let Some(drag) = this.drag.as_ref() else {
+                    return;
+                };
                 let dy = f32::from(ev.position.y - drag.start_y);
                 let start = drag.start_target;
                 if dy.abs() > DRAG_THRESHOLD {

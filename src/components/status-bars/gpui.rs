@@ -20,12 +20,12 @@
 use std::{cell::Cell, collections::HashMap, f32::consts::TAU, rc::Rc, time::Instant};
 
 use chrono::NaiveDate;
+use gpui_kit::component::{ActiveTheme as _, h_flex, v_flex};
 use gpui_kit::{
-    canvas, div, prelude::*, px, relative, rgb, App, Bounds, Context, Div, FocusHandle,
-    Focusable, FontWeight, Hsla, KeyBinding, MouseMoveEvent, Pixels, Render, SharedString,
-    Subscription, Window,
+    App, Bounds, Context, Div, FocusHandle, Focusable, FontWeight, Hsla, KeyBinding,
+    MouseMoveEvent, Pixels, Render, SharedString, Subscription, Window, canvas, div, prelude::*,
+    px, relative, rgb,
 };
-use gpui_kit::component::{h_flex, v_flex, ActiveTheme as _};
 
 use super::{Dismiss, First, Last, Next, NextWeek, Prev, PrevWeek};
 
@@ -37,7 +37,6 @@ const TAU_UPTIME: f32 = 0.12;
 const PING_PERIOD: f32 = 1.5;
 const LOAD_PERIOD: f32 = 1.6;
 
-/// Call once at startup, after `gpui_component::init(cx)`.
 pub fn init(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("left", Prev, Some(CONTEXT)),
@@ -50,14 +49,11 @@ pub fn init(cx: &mut App) {
     ]);
 }
 
-// ---- data model --------------------------------------------------------------
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StatusLevel {
     Up,
     Degraded,
     Down,
-    /// No data for the day.
     None,
 }
 
@@ -70,13 +66,17 @@ pub struct StatusIncident {
 
 impl StatusIncident {
     pub fn new(title: impl Into<SharedString>) -> Self {
-        Self { title: title.into(), minutes: None, status: None }
+        Self {
+            title: title.into(),
+            minutes: None,
+            status: None,
+        }
     }
-    pub fn minutes(mut self, minutes: u32) -> Self {
+    pub const fn minutes(mut self, minutes: u32) -> Self {
         self.minutes = Some(minutes);
         self
     }
-    pub fn status(mut self, status: StatusLevel) -> Self {
+    pub const fn status(mut self, status: StatusLevel) -> Self {
         self.status = Some(status);
         self
     }
@@ -97,22 +97,29 @@ pub struct StatusDay {
 }
 
 impl StatusDay {
-    pub fn new(date: NaiveDate) -> Self {
-        Self { date, status: None, downtime: None, degraded: None, uptime: None, incidents: Vec::new() }
+    pub const fn new(date: NaiveDate) -> Self {
+        Self {
+            date,
+            status: None,
+            downtime: None,
+            degraded: None,
+            uptime: None,
+            incidents: Vec::new(),
+        }
     }
-    pub fn status(mut self, status: StatusLevel) -> Self {
+    pub const fn status(mut self, status: StatusLevel) -> Self {
         self.status = Some(status);
         self
     }
-    pub fn downtime(mut self, minutes: u32) -> Self {
+    pub const fn downtime(mut self, minutes: u32) -> Self {
         self.downtime = Some(minutes);
         self
     }
-    pub fn degraded(mut self, minutes: u32) -> Self {
+    pub const fn degraded(mut self, minutes: u32) -> Self {
         self.degraded = Some(minutes);
         self
     }
-    pub fn uptime(mut self, percent: f32) -> Self {
+    pub const fn uptime(mut self, percent: f32) -> Self {
         self.uptime = Some(percent);
         self
     }
@@ -137,7 +144,12 @@ pub fn fill_status_days(
     let mut days = Vec::new();
     let mut date = from;
     while date <= to {
-        days.push(by_date.get(&date).cloned().unwrap_or_else(|| StatusDay::new(date)));
+        days.push(
+            by_date
+                .get(&date)
+                .cloned()
+                .unwrap_or_else(|| StatusDay::new(date)),
+        );
         let Some(next) = date.succ_opt() else { break };
         date = next;
     }
@@ -157,7 +169,8 @@ pub fn day_status(day: &StatusDay) -> StatusLevel {
 }
 
 pub fn day_uptime(day: &StatusDay) -> f32 {
-    day.uptime.unwrap_or_else(|| (100.0 - day.downtime.unwrap_or(0) as f32 / 1440.0 * 100.0).max(0.0))
+    day.uptime
+        .unwrap_or_else(|| (100.0 - day.downtime.unwrap_or(0) as f32 / 1440.0 * 100.0).max(0.0))
 }
 
 fn fmt_duration(m: u32) -> String {
@@ -178,7 +191,7 @@ fn fmt_percent(v: f32) -> String {
     format!("{}%", s.trim_end_matches('0').trim_end_matches('.'))
 }
 
-fn word(s: StatusLevel) -> &'static str {
+const fn word(s: StatusLevel) -> &'static str {
     match s {
         StatusLevel::Up => "Operational",
         StatusLevel::Degraded => "Degraded",
@@ -187,14 +200,12 @@ fn word(s: StatusLevel) -> &'static str {
     }
 }
 
-fn current_word(s: StatusLevel) -> &'static str {
+const fn current_word(s: StatusLevel) -> &'static str {
     match s {
         StatusLevel::Degraded => "Degraded performance",
         other => word(other),
     }
 }
-
-// ---- config ----------------------------------------------------------------
 
 /// Tunable parameters. Override a few with `..Default::default()`.
 #[derive(Clone, Copy, Debug)]
@@ -268,15 +279,11 @@ impl Palette {
     }
 }
 
-// ---- view ------------------------------------------------------------------
-
 pub struct StatusBars {
     label: SharedString,
     days: Vec<StatusDay>,
     config: StatusBarsConfig,
     current: Option<StatusLevel>,
-
-    /// Visible slots: `Some(index into days)` or `None` for front padding.
     shown: Vec<Option<usize>>,
     shown_count: usize,
     dirty: bool,
@@ -363,7 +370,6 @@ impl StatusBars {
         cx.notify();
     }
 
-    /// Overrides the header status (defaults to today's).
     pub fn set_current(&mut self, current: Option<StatusLevel>, cx: &mut Context<Self>) {
         self.current = current;
         cx.notify();
@@ -375,8 +381,6 @@ impl StatusBars {
         self.wake(cx);
         cx.notify();
     }
-
-    // ---- derived state -----------------------------------------------------
 
     fn visible_count(&self) -> usize {
         let c = &self.config;
@@ -392,7 +396,6 @@ impl StatusBars {
             .unwrap_or_else(|| fits.max(1))
     }
 
-    /// Rebuilds the visible slots and stats; runs only when the count or data changes.
     fn rebuild(&mut self, count: usize) {
         let tail_start = self.days.len().saturating_sub(count);
         let pad = count.saturating_sub(self.days.len() - tail_start);
@@ -411,12 +414,10 @@ impl StatusBars {
             .fold((0.0f32, 0usize), |(s, n), d| (s + day_uptime(d), n + 1));
         let target = (n > 0).then(|| sum / n as f32);
         if self.uptime.is_none() {
-            self.uptime_shown = target.unwrap_or(0.0); // first data appears without a count-up
+            self.uptime_shown = target.unwrap_or(0.0);
         }
         self.uptime = target;
     }
-
-    // ---- interaction -------------------------------------------------------
 
     fn wake(&mut self, cx: &mut Context<Self>) {
         if !self.animating {
@@ -463,10 +464,10 @@ impl StatusBars {
         self.point(to(from, last).min(last), true, cx);
     }
 
-    // ---- per-frame simulation ---------------------------------------------
-
-    fn ping_active(&self, now: StatusLevel) -> bool {
-        self.config.pulse && !self.config.loading && matches!(now, StatusLevel::Down | StatusLevel::Degraded)
+    const fn ping_active(&self, now: StatusLevel) -> bool {
+        self.config.pulse
+            && !self.config.loading
+            && matches!(now, StatusLevel::Down | StatusLevel::Degraded)
     }
 
     fn now_status(&self) -> StatusLevel {
@@ -511,11 +512,13 @@ impl StatusBars {
         }
     }
 
-    // ---- element builders --------------------------------------------------
-
     fn render_header(&self, now: StatusLevel, st: &Palette) -> Div {
         let loading = self.config.loading;
-        let dot = if loading { st.muted_fg.opacity(0.5) } else { st.dot(now) };
+        let dot = if loading {
+            st.muted_fg.opacity(0.5)
+        } else {
+            st.dot(now)
+        };
 
         let ping = (self.ping_active(now)).then(|| {
             let p = (self.clock % PING_PERIOD) / PING_PERIOD;
@@ -558,7 +561,11 @@ impl StatusBars {
                             .when_some(ping, |d, ring| d.child(ring))
                             .child(div().size(px(6.0)).rounded_full().bg(dot)),
                     )
-                    .child(if loading { "Checking…" } else { current_word(now) }),
+                    .child(if loading {
+                        "Checking…"
+                    } else {
+                        current_word(now)
+                    }),
             )
     }
 
@@ -594,10 +601,17 @@ impl StatusBars {
     }
 
     fn render_tip(&self, st: &Palette) -> Div {
-        let day = self.shown.get(self.tip_index).copied().flatten().map(|i| &self.days[i]);
+        let day = self
+            .shown
+            .get(self.tip_index)
+            .copied()
+            .flatten()
+            .map(|i| &self.days[i]);
         let status = day.map_or(StatusLevel::None, day_status);
 
-        let date_txt = day.map_or("Before tracking".to_string(), |d| d.date.format("%a, %b %-d").to_string());
+        let date_txt = day.map_or("Before tracking".to_string(), |d| {
+            d.date.format("%a, %b %-d").to_string()
+        });
         let extra = day.and_then(|d| {
             if !d.incidents.is_empty() {
                 return None;
@@ -640,13 +654,29 @@ impl StatusBars {
                     .mt(px(4.0))
                     .gap(px(6.0))
                     .text_color(st.muted_fg)
-                    .child(div().flex_none().size(px(6.0)).rounded_full().bg(st.dot(status)))
+                    .child(
+                        div()
+                            .flex_none()
+                            .size(px(6.0))
+                            .rounded_full()
+                            .bg(st.dot(status)),
+                    )
                     .child(word(status))
-                    .when_some(extra, |d, e| d.child(div().text_color(st.muted_fg.opacity(0.8)).child(e))),
+                    .when_some(extra, |d, e| {
+                        d.child(div().text_color(st.muted_fg.opacity(0.8)).child(e))
+                    }),
             )
-            .when(status == StatusLevel::Up && day.is_some_and(|d| d.incidents.is_empty()), |d| {
-                d.child(div().mt(px(4.0)).text_color(st.muted_fg.opacity(0.8)).child("No incidents"))
-            })
+            .when(
+                status == StatusLevel::Up && day.is_some_and(|d| d.incidents.is_empty()),
+                |d| {
+                    d.child(
+                        div()
+                            .mt(px(4.0))
+                            .text_color(st.muted_fg.opacity(0.8))
+                            .child("No incidents"),
+                    )
+                },
+            )
             .children(day.into_iter().flat_map(|d| d.incidents.iter()).map(|inc| {
                 div()
                     .mt(px(6.0))
@@ -687,8 +717,11 @@ impl Render for StatusBars {
         };
         let now = self.now_status();
 
-        // Bars: plain divs; hover dimming and the active lift are cheap style changes.
-        let pulse = if c.loading { 0.55 + 0.25 * (self.clock * TAU / LOAD_PERIOD).sin() } else { 1.0 };
+        let pulse = if c.loading {
+            0.55 + 0.25 * (self.clock * TAU / LOAD_PERIOD).sin()
+        } else {
+            1.0
+        };
         let bars: Vec<_> = self
             .shown
             .iter()
@@ -696,14 +729,26 @@ impl Render for StatusBars {
             .map(|(i, slot)| {
                 let status = slot.map_or(StatusLevel::None, |ix| day_status(&self.days[ix]));
                 let is_active = self.active == Some(i);
-                let color = if c.loading { st.empty.opacity(pulse) } else { st.bar(status) };
+                let color = if c.loading {
+                    st.empty.opacity(pulse)
+                } else {
+                    st.bar(status)
+                };
                 div()
                     .flex_1()
                     .min_w_0()
-                    .h(px(if is_active { c.bar_height * 1.08 } else { c.bar_height }))
+                    .h(px(if is_active {
+                        c.bar_height * 1.08
+                    } else {
+                        c.bar_height
+                    }))
                     .rounded(px(2.0))
                     .bg(color)
-                    .opacity(if is_active { 1.0 } else { 1.0 - 0.65 * self.dim })
+                    .opacity(if is_active {
+                        1.0
+                    } else {
+                        1.0 - 0.65 * self.dim
+                    })
             })
             .collect();
 
@@ -718,9 +763,13 @@ impl Render for StatusBars {
             .h(px(c.bar_height))
             .items_end()
             .gap(px(c.gap))
-            .on_action(cx.listener(|this, _: &Prev, _, cx| this.nav(|f, _| f.saturating_sub(1), cx)))
+            .on_action(
+                cx.listener(|this, _: &Prev, _, cx| this.nav(|f, _| f.saturating_sub(1), cx)),
+            )
             .on_action(cx.listener(|this, _: &Next, _, cx| this.nav(|f, _| f + 1, cx)))
-            .on_action(cx.listener(|this, _: &PrevWeek, _, cx| this.nav(|f, _| f.saturating_sub(7), cx)))
+            .on_action(
+                cx.listener(|this, _: &PrevWeek, _, cx| this.nav(|f, _| f.saturating_sub(7), cx)),
+            )
             .on_action(cx.listener(|this, _: &NextWeek, _, cx| this.nav(|f, _| f + 7, cx)))
             .on_action(cx.listener(|this, _: &First, _, cx| this.nav(|_, _| 0, cx)))
             .on_action(cx.listener(|this, _: &Last, _, cx| this.nav(|_, l| l, cx)))
@@ -740,13 +789,12 @@ impl Render for StatusBars {
                 }
             }))
             .children(bars)
-            // Bounds probe: feeds hit-testing and the responsive day count.
             .child(
                 canvas(
                     move |bounds, window, cx| {
                         let prev = probe.replace(bounds);
                         if (prev.size.width - bounds.size.width).abs() > px(0.5) {
-                            let entity = entity.clone();
+                            let entity = entity;
                             window.defer(cx, move |_, cx| {
                                 entity.update(cx, |this, cx| {
                                     this.width = f32::from(bounds.size.width);
@@ -763,8 +811,11 @@ impl Render for StatusBars {
 
         let tip = (self.tip_alpha > 0.01 && !self.shown.is_empty()).then(|| {
             let w = c.tooltip_width;
-            // Slide the tooltip left in proportion to position so it stays inside the strip.
-            let frac = if self.width > 0.0 { (self.tip_x / self.width).clamp(0.0, 1.0) } else { 0.0 };
+            let frac = if self.width > 0.0 {
+                (self.tip_x / self.width).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
             div()
                 .absolute()
                 .bottom(relative(1.0))

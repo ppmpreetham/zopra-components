@@ -17,8 +17,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::component::{
-    menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem},
     ActiveTheme as _,
+    menu::{ContextMenuExt as _, PopupMenu, PopupMenuItem},
 };
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
@@ -69,7 +69,11 @@ impl DockState {
     }
 
     pub fn pointer(&mut self, pos: Point<Pixels>, pos_cfg: DockPosition, cx: &mut Context<Self>) {
-        let m = if pos_cfg.horizontal() { f32::from(pos.x) } else { f32::from(pos.y) };
+        let m = if pos_cfg.horizontal() {
+            f32::from(pos.x)
+        } else {
+            f32::from(pos.y)
+        };
         self.mouse_t = m;
         if !self.tracking {
             self.tracking = true;
@@ -116,7 +120,11 @@ impl DockState {
         self.hide += (want_hide - self.hide) * ease(TAU_HIDE);
         self.bounces.retain(|(_, t)| t.elapsed() < BOUNCE_TIME);
 
-        let mouse_gap = if self.inside { (self.mouse_t - self.mouse_s).abs() } else { 0.0 };
+        let mouse_gap = if self.inside {
+            (self.mouse_t - self.mouse_s).abs()
+        } else {
+            0.0
+        };
         let moving = (want - self.intensity).abs() > 0.002
             || (want_hide - self.hide).abs() > 0.002
             || mouse_gap > 0.1
@@ -137,15 +145,19 @@ impl DockState {
     pub fn size_for(&self, center: f32, config: &DockConfig) -> f32 {
         let t = (1.0 - (center - self.mouse_s).abs() / config.distance.max(1.0)).clamp(0.0, 1.0);
         let eased = t * t * (3.0 - 2.0 * t);
-        config.base_item_size + (config.magnification - config.base_item_size) * eased * self.intensity
+        config.base_item_size
+            + (config.magnification - config.base_item_size) * eased * self.intensity
     }
 
     #[must_use]
     pub fn hop(&self, ix: usize) -> f32 {
-        self.bounces.iter().find(|(i, _)| *i == ix).map_or(0.0, |(_, t0)| {
-            let t = t0.elapsed().as_secs_f32();
-            BOUNCE_HEIGHT * (-t * 5.0).exp() * (t * 14.0).sin().abs()
-        })
+        self.bounces
+            .iter()
+            .find(|(i, _)| *i == ix)
+            .map_or(0.0, |(_, t0)| {
+                let t = t0.elapsed().as_secs_f32();
+                BOUNCE_HEIGHT * (-t * 5.0).exp() * (t * 14.0).sin().abs()
+            })
     }
 }
 
@@ -181,10 +193,30 @@ fn edge_slot(pos: DockPosition, off: f32) -> Div {
 fn label_slot(pos: DockPosition, gap: f32) -> Div {
     let d = div().absolute().flex();
     match pos {
-        DockPosition::Bottom => d.left_0().right_0().bottom(relative(1.0)).mb(px(gap)).justify_center(),
-        DockPosition::Top => d.left_0().right_0().top(relative(1.0)).mt(px(gap)).justify_center(),
-        DockPosition::Left => d.top_0().bottom_0().left(relative(1.0)).ml(px(gap)).items_center(),
-        DockPosition::Right => d.top_0().bottom_0().right(relative(1.0)).mr(px(gap)).items_center(),
+        DockPosition::Bottom => d
+            .left_0()
+            .right_0()
+            .bottom(relative(1.0))
+            .mb(px(gap))
+            .justify_center(),
+        DockPosition::Top => d
+            .left_0()
+            .right_0()
+            .top(relative(1.0))
+            .mt(px(gap))
+            .justify_center(),
+        DockPosition::Left => d
+            .top_0()
+            .bottom_0()
+            .left(relative(1.0))
+            .ml(px(gap))
+            .items_center(),
+        DockPosition::Right => d
+            .top_0()
+            .bottom_0()
+            .right(relative(1.0))
+            .mr(px(gap))
+            .items_center(),
     }
 }
 
@@ -196,14 +228,20 @@ fn build_menu(
 ) -> PopupMenu {
     entries.iter().fold(menu, |menu, entry| match entry {
         MenuEntry::Separator => menu.separator(),
-        MenuEntry::Item { label, checked, on_click } => {
+        MenuEntry::Item {
+            label,
+            checked,
+            on_click,
+        } => {
             let cb = on_click.clone();
             menu.item(
-                PopupMenuItem::new(label.clone()).checked(*checked).on_click(move |_, window, cx| {
-                    if let Some(cb) = &cb {
-                        cb(window, cx);
-                    }
-                }),
+                PopupMenuItem::new(label.clone())
+                    .checked(*checked)
+                    .on_click(move |_, window, cx| {
+                        if let Some(cb) = &cb {
+                            cb(window, cx);
+                        }
+                    }),
             )
         }
         MenuEntry::Submenu { label, items } => {
@@ -236,18 +274,42 @@ pub fn dock(
     on_item_click: Option<DockClickCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(p) = position { cfg.position = p; }
-    if let Some(b) = base_item_size { cfg.base_item_size = b; }
-    if let Some(m) = magnification { cfg.magnification = m; }
-    if let Some(g) = gap { cfg.gap = g; }
-    if let Some(r) = roundness { cfg.roundness = r; }
-    if let Some(b) = bounce { cfg.bounce = b; }
-    if let Some(h) = auto_hide { cfg.auto_hide = h; }
-    if let Some(t) = tiles { cfg.tiles = t; }
-    if let Some(l) = show_labels { cfg.show_labels = l; }
-    if let Some(i) = show_indicators { cfg.show_indicators = i; }
-    if let Some(b) = show_badges { cfg.show_badges = b; }
-    if let Some(a) = accent { cfg.accent = Some(a); }
+    if let Some(p) = position {
+        cfg.position = p;
+    }
+    if let Some(b) = base_item_size {
+        cfg.base_item_size = b;
+    }
+    if let Some(m) = magnification {
+        cfg.magnification = m;
+    }
+    if let Some(g) = gap {
+        cfg.gap = g;
+    }
+    if let Some(r) = roundness {
+        cfg.roundness = r;
+    }
+    if let Some(b) = bounce {
+        cfg.bounce = b;
+    }
+    if let Some(h) = auto_hide {
+        cfg.auto_hide = h;
+    }
+    if let Some(t) = tiles {
+        cfg.tiles = t;
+    }
+    if let Some(l) = show_labels {
+        cfg.show_labels = l;
+    }
+    if let Some(i) = show_indicators {
+        cfg.show_indicators = i;
+    }
+    if let Some(b) = show_badges {
+        cfg.show_badges = b;
+    }
+    if let Some(a) = accent {
+        cfg.accent = Some(a);
+    }
 
     let all_entries = entries.unwrap_or_default();
     let entries_count = all_entries.len();
@@ -320,8 +382,17 @@ pub fn dock(
                 let item_on_click = item.on_click.clone();
                 let bounce_enabled = cfg.bounce;
 
-                let b = state.read(cx).item_bounds.get(ix).copied().unwrap_or_default();
-                let center = if pos.horizontal() { f32::from(b.center().x) } else { f32::from(b.center().y) };
+                let b = state
+                    .read(cx)
+                    .item_bounds
+                    .get(ix)
+                    .copied()
+                    .unwrap_or_default();
+                let center = if pos.horizontal() {
+                    f32::from(b.center().x)
+                } else {
+                    f32::from(b.center().y)
+                };
                 let item_size = state.read(cx).size_for(center, &cfg);
                 let hop_val = state.read(cx).hop(ix);
                 let is_hovered = state.read(cx).hovered == Some(ix);
@@ -335,7 +406,12 @@ pub fn dock(
                     .justify_center()
                     .size(px(item_size))
                     .rounded(px(cfg.roundness.clamp(0.0, 1.0) * item_size / 2.0))
-                    .when(cfg.tiles, |d| d.bg(st.tile_bg).border_1().border_color(st.border).shadow_sm())
+                    .when(cfg.tiles, |d| {
+                        d.bg(st.tile_bg)
+                            .border_1()
+                            .border_color(st.border)
+                            .shadow_sm()
+                    })
                     .text_color(st.fg)
                     .cursor_pointer()
                     .map(|d| edge_margin(d, pos, hop_val))
@@ -355,9 +431,10 @@ pub fn dock(
                     )
                     .child(item.icon.clone().size(px(item_size * 0.5)))
                     .when(cfg.show_indicators && item.active, |d| {
-                        d.child(edge_slot(pos, 8.0).child(
-                            div().size(px(4.0)).rounded_full().bg(st.accent),
-                        ))
+                        d.child(
+                            edge_slot(pos, 8.0)
+                                .child(div().size(px(4.0)).rounded_full().bg(st.accent)),
+                        )
                     })
                     .when(cfg.show_badges, |d| match item.badge.filter(|n| *n > 0) {
                         Some(n) => d.child(
@@ -375,24 +452,30 @@ pub fn dock(
                                 .bg(st.badge)
                                 .text_color(white())
                                 .text_size(px(10.0))
-                                .child(if n > 99 { "99+".to_string() } else { n.to_string() }),
+                                .child(if n > 99 {
+                                    "99+".to_string()
+                                } else {
+                                    n.to_string()
+                                }),
                         ),
                         None => d,
                     })
                     .when(cfg.show_labels && is_hovered, |d| {
-                        d.child(label_slot(pos, 8.0).child(
-                            div()
-                                .px_2()
-                                .py_1()
-                                .rounded_md()
-                                .whitespace_nowrap()
-                                .text_xs()
-                                .bg(st.label_bg)
-                                .text_color(st.label_fg)
-                                .border_1()
-                                .border_color(st.border)
-                                .child(item.label.clone()),
-                        ))
+                        d.child(
+                            label_slot(pos, 8.0).child(
+                                div()
+                                    .px_2()
+                                    .py_1()
+                                    .rounded_md()
+                                    .whitespace_nowrap()
+                                    .text_xs()
+                                    .bg(st.label_bg)
+                                    .text_color(st.label_fg)
+                                    .border_1()
+                                    .border_color(st.border)
+                                    .child(item.label.clone()),
+                            ),
+                        )
                     })
                     .on_hover(move |hovered: &bool, _window, cx| {
                         state_hover.update(cx, |this, cx| {
@@ -422,13 +505,18 @@ pub fn dock(
                     el.into_any_element()
                 } else {
                     let menu = item.menu.clone();
-                    el.context_menu(move |m, window, cx| build_menu(m, &menu, window, cx)).into_any_element()
+                    el.context_menu(move |m, window, cx| build_menu(m, &menu, window, cx))
+                        .into_any_element()
                 }
             }
             DockEntry::Separator => {
                 let len = cfg.base_item_size * 0.7;
                 let line = div().flex_none().bg(st.border);
-                let line = if cfg.position.horizontal() { line.w(px(1.0)).h(px(len)) } else { line.h(px(1.0)).w(px(len)) };
+                let line = if cfg.position.horizontal() {
+                    line.w(px(1.0)).h(px(len))
+                } else {
+                    line.h(px(1.0)).w(px(len))
+                };
                 edge_margin(line, cfg.position, (cfg.base_item_size - len) / 2.0).into_any_element()
             }
         })
@@ -443,7 +531,13 @@ pub fn dock(
         .flex_none()
         .flex()
         .gap(px(cfg.gap))
-        .map(|d| if horiz { d.flex_row().h(px(cross)).px(px(pad)) } else { d.flex_col().w(px(cross)).py(px(pad)) })
+        .map(|d| {
+            if horiz {
+                d.flex_row().h(px(cross)).px(px(pad))
+            } else {
+                d.flex_col().w(px(cross)).py(px(pad))
+            }
+        })
         .map(|d| match pos {
             DockPosition::Bottom => d.items_end().pb(px(pad)),
             DockPosition::Top => d.items_start().pt(px(pad)),

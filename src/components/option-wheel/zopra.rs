@@ -145,7 +145,11 @@ impl OptionWheelState {
         (self.config.font_size * self.config.spacing).max(1.0)
     }
 
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss
+    )]
     pub fn set_target(&mut self, value: f32, snap: bool, cx: &mut Context<Self>) {
         let n = self.items.len();
         if n == 0 {
@@ -256,7 +260,11 @@ fn mix(a: Hsla, b: Hsla, t: f32) -> Hsla {
     .into()
 }
 
-#[allow(clippy::too_many_arguments, clippy::too_many_lines, clippy::cast_precision_loss)]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::cast_precision_loss
+)]
 #[component]
 pub fn option_wheel(
     items: Vec<SharedString>,
@@ -279,28 +287,54 @@ pub fn option_wheel(
     on_change: Option<OptionWheelChangeCallback>,
 ) {
     let mut cfg = config.unwrap_or_default();
-    if let Some(val) = side { cfg.side = val; }
-    if let Some(val) = font_size { cfg.font_size = val; }
-    if let Some(val) = spacing { cfg.spacing = val; }
-    if let Some(val) = curve { cfg.curve = val; }
-    if let Some(val) = tilt { cfg.tilt = val; }
-    if let Some(val) = fade { cfg.fade = val; }
-    if let Some(val) = min_opacity { cfg.min_opacity = val; }
-    if let Some(val) = smoothing_ms { cfg.smoothing_ms = val; }
-    if let Some(val) = inset { cfg.inset = val; }
-    if let Some(val) = looping { cfg.looping = val; }
-    if let Some(val) = draggable { cfg.draggable = val; }
-    if let Some(val) = visible_radius { cfg.visible_radius = val; }
-    if let Some(val) = text_color { cfg.text_color = Some(val); }
-    if let Some(val) = active_color { cfg.active_color = Some(val); }
+    if let Some(val) = side {
+        cfg.side = val;
+    }
+    if let Some(val) = font_size {
+        cfg.font_size = val;
+    }
+    if let Some(val) = spacing {
+        cfg.spacing = val;
+    }
+    if let Some(val) = curve {
+        cfg.curve = val;
+    }
+    if let Some(val) = tilt {
+        cfg.tilt = val;
+    }
+    if let Some(val) = fade {
+        cfg.fade = val;
+    }
+    if let Some(val) = min_opacity {
+        cfg.min_opacity = val;
+    }
+    if let Some(val) = smoothing_ms {
+        cfg.smoothing_ms = val;
+    }
+    if let Some(val) = inset {
+        cfg.inset = val;
+    }
+    if let Some(val) = looping {
+        cfg.looping = val;
+    }
+    if let Some(val) = draggable {
+        cfg.draggable = val;
+    }
+    if let Some(val) = visible_radius {
+        cfg.visible_radius = val;
+    }
+    if let Some(val) = text_color {
+        cfg.text_color = Some(val);
+    }
+    if let Some(val) = active_color {
+        cfg.active_color = Some(val);
+    }
 
     let init_selected = selected.unwrap_or(0);
-    let init_items = items.clone();
+    let init_items = items;
 
     let state_holder = window.use_state(cx, |_window, cx| {
-        cx.new(|cx| {
-            OptionWheelState::new(init_items, init_selected, cfg, cx)
-        })
+        cx.new(|cx| OptionWheelState::new(init_items, init_selected, cfg, cx))
     });
 
     let state = state_holder.read(cx).clone();
@@ -318,7 +352,11 @@ pub fn option_wheel(
 
     let row_h = state.read(cx).row_h();
     let tilt_rad = c.tilt.to_radians();
-    let radius = if tilt_rad > 0.0005 { row_h / tilt_rad } else { 0.0 };
+    let radius = if tilt_rad > 0.0005 {
+        row_h / tilt_rad
+    } else {
+        0.0
+    };
     let mirror = if c.side == Side::Right { -1.0 } else { 1.0 };
     let cur = state.read(cx).current;
     let sel = state.read(cx).selected;
@@ -337,7 +375,10 @@ pub fn option_wheel(
 
             let (x, y) = if radius > 0.0 {
                 let ang = (d * tilt_rad).clamp(-FRAC_PI_2, FRAC_PI_2);
-                (-mirror * radius * (1.0 - ang.cos()) * c.curve, radius * ang.sin())
+                (
+                    -mirror * radius * (1.0 - ang.cos()) * c.curve,
+                    radius * ang.sin(),
+                )
             } else {
                 (0.0, d * row_h)
             };
@@ -444,14 +485,20 @@ pub fn option_wheel(
                 }
             });
         })
-        .on_mouse_down(MouseButton::Left, move |ev: &MouseDownEvent, _window, cx| {
-            state_down.update(cx, |this, _cx| {
-                if this.config.draggable {
-                    this.dragged = false;
-                    this.drag = Some(Drag { start_y: ev.position.y, start_target: this.target });
-                }
-            });
-        })
+        .on_mouse_down(
+            MouseButton::Left,
+            move |ev: &MouseDownEvent, _window, cx| {
+                state_down.update(cx, |this, _cx| {
+                    if this.config.draggable {
+                        this.dragged = false;
+                        this.drag = Some(Drag {
+                            start_y: ev.position.y,
+                            start_target: this.target,
+                        });
+                    }
+                });
+            },
+        )
         .on_mouse_move(move |ev: &MouseMoveEvent, _window, cx| {
             state_move.update(cx, |this, cx| {
                 let Some(drag) = this.drag else { return };

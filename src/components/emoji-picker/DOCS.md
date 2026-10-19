@@ -26,7 +26,7 @@ use zopra::{component, hooks::use_state, view};
 
 #[component]
 fn my_chat() {
-    let (message, set_message) = use_state(|| String::new());
+    let (message, set_message) = use_state( String::new());
 
     let on_select = {
         let set_message = set_message.clone();

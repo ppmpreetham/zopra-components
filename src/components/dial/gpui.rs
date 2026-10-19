@@ -15,19 +15,31 @@
     clippy::redundant_closure_for_method_calls
 )]
 
-use std::{cell::Cell, collections::VecDeque, rc::Rc, time::{Duration, Instant}};
-
-use gpui_kit::{
-    actions, canvas, div, fill, point, prelude::*, px, size, App, Bounds, Context, Corners,
-    DispatchPhase, EventEmitter, FocusHandle, Focusable, FontWeight, Hsla, KeyBinding,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, PathBuilder, Pixels,
-    Point, SharedString, Window,
+use std::{
+    cell::Cell,
+    collections::VecDeque,
+    rc::Rc,
+    time::{Duration, Instant},
 };
-use gpui_kit::component::{h_flex, ActiveTheme as _};
+
+use gpui_kit::component::{ActiveTheme as _, h_flex};
+use gpui_kit::{
+    App, Bounds, Context, Corners, DispatchPhase, EventEmitter, FocusHandle, Focusable, FontWeight,
+    Hsla, KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad,
+    PathBuilder, Pixels, Point, SharedString, Window, actions, canvas, div, fill, point,
+    prelude::*, px, size,
+};
 
 actions!(
     comet_dial,
-    [Increment, Decrement, IncrementLarge, DecrementLarge, ToMin, ToMax]
+    [
+        Increment,
+        Decrement,
+        IncrementLarge,
+        DecrementLarge,
+        ToMin,
+        ToMax
+    ]
 );
 
 const CONTEXT: &str = "CometDial";
@@ -116,7 +128,11 @@ impl Default for DialConfig {
 #[derive(Clone, Debug)]
 pub enum CometDialEvent {
     Change(f32),
-    ChangeEnd { value: f32, velocity: f32, bounce: f32 },
+    ChangeEnd {
+        value: f32,
+        velocity: f32,
+        bounce: f32,
+    },
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -205,7 +221,7 @@ impl CometDial {
         this
     }
 
-    pub fn value(&self) -> f32 {
+    pub const fn value(&self) -> f32 {
         self.value
     }
 
@@ -226,7 +242,6 @@ impl CometDial {
         self.text_key = i64::MIN;
         cx.notify();
     }
-
 
     fn range(&self) -> f32 {
         (self.config.max - self.config.min).max(1e-9)
@@ -250,14 +265,21 @@ impl CometDial {
     }
 
     fn key_step(&self) -> f32 {
-        if self.config.step > 0.0 { self.config.step } else { self.range() / 100.0 }
+        if self.config.step > 0.0 {
+            self.config.step
+        } else {
+            self.range() / 100.0
+        }
     }
 
     fn local(&self, pos: Point<Pixels>) -> (f32, f32) {
         let b = self.bounds.get();
         let scale = (f32::from(b.size.width).min(f32::from(b.size.height)) / 200.0).max(1e-6);
         let c = b.center();
-        (f32::from(pos.x - c.x) / scale, f32::from(pos.y - c.y) / scale)
+        (
+            f32::from(pos.x - c.x) / scale,
+            f32::from(pos.y - c.y) / scale,
+        )
     }
 
     fn angle_at(&self, pos: Point<Pixels>, side: &mut Option<Edge>) -> f32 {
@@ -272,11 +294,14 @@ impl CometDial {
                 None => 0.0,
             };
         } else {
-            *side = Some(if rel > sweep / 2.0 { Edge::Hi } else { Edge::Lo });
+            *side = Some(if rel > sweep / 2.0 {
+                Edge::Hi
+            } else {
+                Edge::Lo
+            });
         }
         self.config.min + rel / sweep * self.range()
     }
-
 
     fn commit(&mut self, v: f32, finished: Option<(f32, f32)>, cx: &mut Context<Self>) {
         let s = self.snap(v);
@@ -285,7 +310,11 @@ impl CometDial {
             cx.emit(CometDialEvent::Change(s));
         }
         if let Some((velocity, bounce)) = finished {
-            cx.emit(CometDialEvent::ChangeEnd { value: s, velocity, bounce });
+            cx.emit(CometDialEvent::ChangeEnd {
+                value: s,
+                velocity,
+                bounce,
+            });
         }
     }
 
@@ -323,7 +352,13 @@ impl CometDial {
         let at = self.angle_at(pos, &mut side);
         let mut hist = VecDeque::with_capacity(4);
         hist.push_back((Instant::now(), at));
-        self.grip = Some(Grip { at: None, hist, side, moved: false, down: pos });
+        self.grip = Some(Grip {
+            at: None,
+            hist,
+            side,
+            moved: false,
+            down: pos,
+        });
 
         self.commit(at, None, cx);
         let (to, bounce, v) = (self.snap(at), self.config.tap_bounce, self.vel);
@@ -387,7 +422,6 @@ impl CometDial {
         self.wake(cx);
     }
 
-
     fn step_spring(&mut self, dt: f32) {
         let Some(sp) = self.spring else { return };
         let k = 200.0 + self.config.speed.clamp(0.0, 100.0) / 100.0 * 700.0;
@@ -425,12 +459,20 @@ impl CometDial {
                 } else {
                     prev + (at - prev) * (1.0 - (-dt / TAU_FOLLOW).exp())
                 };
-                self.vel = if dt > 0.0 { (self.reading - prev) / dt } else { 0.0 };
+                self.vel = if dt > 0.0 {
+                    (self.reading - prev) / dt
+                } else {
+                    0.0
+                };
             }
             None => self.step_spring(dt),
         }
 
-        let v_raw = if dt == 0.0 || reduce { 0.0 } else { (self.reading - prev) / dt / self.range() };
+        let v_raw = if dt == 0.0 || reduce {
+            0.0
+        } else {
+            (self.reading - prev) / dt / self.range()
+        };
         self.smooth_v += (v_raw - self.smooth_v) * (1.0 - (-dt / TAU_V).exp());
 
         let moving = self.grip.is_some() || self.spring.is_some() || self.smooth_v.abs() > 0.002;
@@ -456,7 +498,6 @@ impl CometDial {
     }
 }
 
-
 #[derive(Clone, Copy)]
 struct Frame {
     start: f32,
@@ -473,7 +514,15 @@ struct Frame {
     dragging: bool,
 }
 
-fn stroke_arc(window: &mut Window, c: Point<Pixels>, r: f32, a0: f32, a1: f32, w: f32, color: Hsla) {
+fn stroke_arc(
+    window: &mut Window,
+    c: Point<Pixels>,
+    r: f32,
+    a0: f32,
+    a1: f32,
+    w: f32,
+    color: Hsla,
+) {
     if a1 - a0 < 0.01 || color.a <= 0.003 {
         return;
     }
@@ -490,7 +539,10 @@ fn stroke_arc(window: &mut Window, c: Point<Pixels>, r: f32, a0: f32, a1: f32, w
 
 fn dot(window: &mut Window, c: Point<Pixels>, r: f32, color: Hsla) {
     let bounds = Bounds::centered_at(c, size(px(r * 2.0), px(r * 2.0)));
-    window.paint_quad(PaintQuad { corner_radii: Corners::all(px(r)), ..fill(bounds, color) });
+    window.paint_quad(PaintQuad {
+        corner_radii: Corners::all(px(r)),
+        ..fill(bounds, color)
+    });
 }
 
 fn paint_dial(window: &mut Window, bounds: Bounds<Pixels>, fr: &Frame) {
@@ -527,7 +579,12 @@ fn paint_dial(window: &mut Window, bounds: Bounds<Pixels>, fr: &Frame) {
         }
     }
 
-    dot(window, point_at(c, r, fr.ang), fr.thickness * 1.8 * scale, fr.accent);
+    dot(
+        window,
+        point_at(c, r, fr.ang),
+        fr.thickness * 1.8 * scale,
+        fr.accent,
+    );
 }
 
 impl Render for CometDial {
@@ -614,7 +671,8 @@ impl Render for CometDial {
                             });
                             let e = entity.clone();
                             window.on_mouse_event(move |ev: &MouseUpEvent, phase, _, cx| {
-                                if phase == DispatchPhase::Capture && ev.button == MouseButton::Left {
+                                if phase == DispatchPhase::Capture && ev.button == MouseButton::Left
+                                {
                                     e.update(cx, |this, cx| this.on_up(cx));
                                 }
                             });

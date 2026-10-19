@@ -8,5 +8,4 @@ pub use gpui::{
     Preset, RevealFont, Span, State as PixelRevealState, Sweep, TextAlign, TextStyle,
     TextTransform, Trigger,
 };
-pub use zopra::{init_pixel_reveal, pixel_reveal, PixelReveal};
-
+pub use zopra::{PixelReveal, init_pixel_reveal, pixel_reveal};

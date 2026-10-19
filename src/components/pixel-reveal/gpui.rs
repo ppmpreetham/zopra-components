@@ -19,9 +19,9 @@ use std::{
 
 use fontdue::{Font as FdFont, FontSettings};
 use gpui_kit::{
-    canvas, div, fill, font, point, prelude::*, px, rgb, size, App, Bounds, ContentMask, Context,
-    EventEmitter, FontId, GlyphId, Hsla, MouseMoveEvent, Pixels, Point, Render, Rgba,
-    SharedString, TextRun, Window,
+    App, Bounds, ContentMask, Context, EventEmitter, FontId, GlyphId, Hsla, MouseMoveEvent, Pixels,
+    Point, Render, Rgba, SharedString, TextRun, Window, canvas, div, fill, font, point, prelude::*,
+    px, rgb, size,
 };
 
 fn mixf(a: f32, b: f32, t: f32) -> f32 {
@@ -36,7 +36,11 @@ fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
 }
 
 fn damp(from: f32, to: f32, rate: f32, dt: f32) -> f32 {
-    if rate.is_finite() { from + (to - from) * (1.0 - (-rate * dt).exp()) } else { to }
+    if rate.is_finite() {
+        from + (to - from) * (1.0 - (-rate * dt).exp())
+    } else {
+        to
+    }
 }
 
 fn hash01(n: i32) -> f32 {
@@ -67,11 +71,18 @@ fn rgb3(c: Hsla) -> [f32; 3] {
     [c.r, c.g, c.b]
 }
 fn mix3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
-    [mixf(a[0], b[0], t), mixf(a[1], b[1], t), mixf(a[2], b[2], t)]
+    [
+        mixf(a[0], b[0], t),
+        mixf(a[1], b[1], t),
+        mixf(a[2], b[2], t),
+    ]
 }
 
 fn normalize(s: &str) -> String {
-    s.chars().filter(|c| c.is_ascii_alphabetic()).map(|c| c.to_ascii_lowercase()).collect()
+    s.chars()
+        .filter(|c| c.is_ascii_alphabetic())
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
 }
 
 macro_rules! alias_enum {
@@ -176,7 +187,14 @@ impl Pos {
                 "bottom" => Some(Anchor { f: 1.0, px: 0.0 }),
                 _ => {
                     let n: f32 = t.trim_end_matches(['%', 'p', 'x']).parse().ok()?;
-                    Some(if t.ends_with('%') { Anchor { f: n / 100.0, px: 0.0 } } else { Anchor { f: 0.0, px: n } })
+                    Some(if t.ends_with('%') {
+                        Anchor {
+                            f: n / 100.0,
+                            px: 0.0,
+                        }
+                    } else {
+                        Anchor { f: 0.0, px: n }
+                    })
                 }
             }
         }
@@ -257,7 +275,11 @@ impl Ease {
                 Kind::In => f(t),
                 Kind::Out => 1.0 - f(1.0 - t),
                 Kind::InOut => {
-                    if t < 0.5 { 0.5 * f(2.0 * t) } else { 1.0 - 0.5 * f(2.0 * (1.0 - t)) }
+                    if t < 0.5 {
+                        0.5 * f(2.0 * t)
+                    } else {
+                        1.0 - 0.5 * f(2.0 * (1.0 - t))
+                    }
                 }
             }
         }
@@ -266,7 +288,13 @@ impl Ease {
             Self::Linear => t,
             Self::Pow(n, k) => shape(k, t, |x| x.powf(n)),
             Self::Sine(k) => shape(k, t, |x| 1.0 - (x * std::f32::consts::FRAC_PI_2).cos()),
-            Self::Expo(k) => shape(k, t, |x| if x <= 0.0 { 0.0 } else { 2f32.powf(10.0 * (x - 1.0)) }),
+            Self::Expo(k) => shape(k, t, |x| {
+                if x <= 0.0 {
+                    0.0
+                } else {
+                    2f32.powf(10.0 * (x - 1.0))
+                }
+            }),
             Self::Circ(k) => shape(k, t, |x| 1.0 - (1.0 - x * x).max(0.0).sqrt()),
             Self::Back(k) => shape(k, t, |x| 2.70158 * x * x * x - 1.70158 * x * x),
         }
@@ -346,29 +374,134 @@ pub fn preset_options(p: Preset) -> Options {
     let o = Options::new();
     match p {
         Preset::Materialize => o,
-        Preset::Signal => o.rise(0.0).stagger(0.07).duration(1.25).ease("power2.out").direction("right")
-            .pattern("scanlines").noise(0.6).scatter(0.04).spread(0.5).pixel(16.0).levels(3u32).solid(0.9)
-            .accent(hex(0xaeff00)).accent_width(0.6).color_noise(0.04).sparkle(0.18).flicker(0.3).glitch(0.35),
-        Preset::Typewriter => o.split("chars").stagger(0.024).duration(0.45).ease("power1.out").reveal_delay(0.0)
-            .rise(0.0).direction("right").pattern("none").spread(0.35).pixel(12.0).levels(2u32).solid(1.0)
-            .accent_width(0.7).sparkle(0.0).flicker(0.2),
-        Preset::Dissolve => o.split("lines").sweep("whole").duration(1.8).ease("sine.inOut").rise(0.0)
-            .direction("none").pattern("random").spread(0.6).pixel(12.0).levels(2u32).solid(0.0)
-            .accent(None::<Hsla>).color_noise(0.0).sparkle(0.0).flicker(0.0),
-        Preset::Rain => o.split("chars").from("random").stagger(0.018).duration(0.95).rise(-0.6).rise_duration(1.1)
-            .direction("down").pattern("rain").noise(0.55).spread(0.5).pixel(16.0).levels(3u32).sparkle(0.2),
-        Preset::Radiate => o.split("lines").sweep("whole").duration(2.2).ease("sine.inOut").rise(0.0)
-            .direction("center").pattern("bayer").noise(0.35).spread(0.4).pixel(32.0).levels(4u32).solid(0.85)
+        Preset::Signal => o
+            .rise(0.0)
+            .stagger(0.07)
+            .duration(1.25)
+            .ease("power2.out")
+            .direction("right")
+            .pattern("scanlines")
+            .noise(0.6)
+            .scatter(0.04)
+            .spread(0.5)
+            .pixel(16.0)
+            .levels(3u32)
+            .solid(0.9)
+            .accent(hex(0xaeff00))
+            .accent_width(0.6)
+            .color_noise(0.04)
+            .sparkle(0.18)
+            .flicker(0.3)
+            .glitch(0.35),
+        Preset::Typewriter => o
+            .split("chars")
+            .stagger(0.024)
+            .duration(0.45)
+            .ease("power1.out")
+            .reveal_delay(0.0)
+            .rise(0.0)
+            .direction("right")
+            .pattern("none")
+            .spread(0.35)
+            .pixel(12.0)
+            .levels(2u32)
+            .solid(1.0)
+            .accent_width(0.7)
+            .sparkle(0.0)
+            .flicker(0.2),
+        Preset::Dissolve => o
+            .split("lines")
+            .sweep("whole")
+            .duration(1.8)
+            .ease("sine.inOut")
+            .rise(0.0)
+            .direction("none")
+            .pattern("random")
+            .spread(0.6)
+            .pixel(12.0)
+            .levels(2u32)
+            .solid(0.0)
+            .accent(None::<Hsla>)
+            .color_noise(0.0)
+            .sparkle(0.0)
+            .flicker(0.0),
+        Preset::Rain => o
+            .split("chars")
+            .from("random")
+            .stagger(0.018)
+            .duration(0.95)
+            .rise(-0.6)
+            .rise_duration(1.1)
+            .direction("down")
+            .pattern("rain")
+            .noise(0.55)
+            .spread(0.5)
+            .pixel(16.0)
+            .levels(3u32)
+            .sparkle(0.2),
+        Preset::Radiate => o
+            .split("lines")
+            .sweep("whole")
+            .duration(2.2)
+            .ease("sine.inOut")
+            .rise(0.0)
+            .direction("center")
+            .pattern("bayer")
+            .noise(0.35)
+            .spread(0.4)
+            .pixel(32.0)
+            .levels(4u32)
+            .solid(0.85)
             .accent_width(0.5),
-        Preset::Bitmap => o.split("lines").sweep("whole").stagger(0.1).duration(1.6).ease("power1.out").rise(0.35)
-            .rise_duration(1.4).direction("up").pattern("bayer").noise(0.5).spread(0.35).pixel(8.0).levels(2u32)
-            .solid(1.0).accent(None::<Hsla>).color_noise(0.0).sparkle(0.0).flicker(0.0),
-        Preset::Glitch => o.rise(0.0).stagger(0.04).duration(1.0).ease("power2.out").direction("none")
-            .pattern("scanlines").noise(1.0).pixel(24.0).levels(3u32).solid(0.9).accent(hex(0xff3d00))
-            .accent2(hex(0x00d1ff)).accent_mix(0.5).accent_width(0.7).color_noise(0.2).sparkle(0.25)
-            .flicker(0.45).glitch(0.85),
-        Preset::Flow => o.sweep("whole").duration(2.4).ease("none").rise(0.6).direction("diagonal")
-            .pattern("flow").noise(0.55).spread(0.5).pixel(24.0).levels(4u32),
+        Preset::Bitmap => o
+            .split("lines")
+            .sweep("whole")
+            .stagger(0.1)
+            .duration(1.6)
+            .ease("power1.out")
+            .rise(0.35)
+            .rise_duration(1.4)
+            .direction("up")
+            .pattern("bayer")
+            .noise(0.5)
+            .spread(0.35)
+            .pixel(8.0)
+            .levels(2u32)
+            .solid(1.0)
+            .accent(None::<Hsla>)
+            .color_noise(0.0)
+            .sparkle(0.0)
+            .flicker(0.0),
+        Preset::Glitch => o
+            .rise(0.0)
+            .stagger(0.04)
+            .duration(1.0)
+            .ease("power2.out")
+            .direction("none")
+            .pattern("scanlines")
+            .noise(1.0)
+            .pixel(24.0)
+            .levels(3u32)
+            .solid(0.9)
+            .accent(hex(0xff3d00))
+            .accent2(hex(0x00d1ff))
+            .accent_mix(0.5)
+            .accent_width(0.7)
+            .color_noise(0.2)
+            .sparkle(0.25)
+            .flicker(0.45)
+            .glitch(0.85),
+        Preset::Flow => o
+            .sweep("whole")
+            .duration(2.4)
+            .ease("none")
+            .rise(0.6)
+            .direction("diagonal")
+            .pattern("flow")
+            .noise(0.55)
+            .spread(0.5)
+            .pixel(24.0)
+            .levels(4u32),
     }
 }
 
@@ -450,7 +583,10 @@ impl RevealFont {
         }))
     }
 
-    pub fn os_or_fallback(family: impl Into<SharedString>, fallback_bytes: &'static [u8]) -> Rc<Self> {
+    pub fn os_or_fallback(
+        family: impl Into<SharedString>,
+        fallback_bytes: &'static [u8],
+    ) -> Rc<Self> {
         let family_str: SharedString = family.into();
         if let Some(fd) = load_os_fontdue(&family_str) {
             return Rc::new(Self {
@@ -481,11 +617,19 @@ fn load_os_fontdue(family: &str) -> Option<FdFont> {
     };
 
     for dir in dirs {
-        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
-            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else { continue };
-            let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_ascii_lowercase();
+            let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+                continue;
+            };
+            let ext = path
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
             if !matches!(ext.as_str(), "ttf" | "otf") {
                 continue;
             }
@@ -549,7 +693,10 @@ pub struct Span {
 }
 impl Span {
     pub fn new(text: impl Into<SharedString>) -> Self {
-        Self { text: text.into(), color: None }
+        Self {
+            text: text.into(),
+            color: None,
+        }
     }
     pub fn color(mut self, c: Hsla) -> Self {
         self.color = Some(c);
@@ -566,7 +713,12 @@ struct R {
 }
 impl R {
     fn union(self, o: R) -> R {
-        R { l: self.l.min(o.l), t: self.t.min(o.t), r: self.r.max(o.r), b: self.b.max(o.b) }
+        R {
+            l: self.l.min(o.l),
+            t: self.t.min(o.t),
+            r: self.r.max(o.r),
+            b: self.b.max(o.b),
+        }
     }
     fn hits(&self, o: &R) -> bool {
         self.l < o.r && o.l < self.r && self.t < o.b && o.t < self.b
@@ -605,11 +757,19 @@ struct Atlas {
 }
 impl Atlas {
     fn sum(&self, x0: i32, y0: i32, x1: i32, y1: i32) -> u32 {
-        let (x0, x1) = ((x0 - self.x).clamp(0, self.w), (x1 - self.x).clamp(0, self.w));
-        let (y0, y1) = ((y0 - self.y).clamp(0, self.h), (y1 - self.y).clamp(0, self.h));
+        let (x0, x1) = (
+            (x0 - self.x).clamp(0, self.w),
+            (x1 - self.x).clamp(0, self.w),
+        );
+        let (y0, y1) = (
+            (y0 - self.y).clamp(0, self.h),
+            (y1 - self.y).clamp(0, self.h),
+        );
         let s = (self.w + 1) as usize;
         let at = |x: i32, y: i32| self.sat[y as usize * s + x as usize];
-        (at(x1, y1) + at(x0, y0)).wrapping_sub(at(x1, y0)).wrapping_sub(at(x0, y1))
+        (at(x1, y1) + at(x0, y0))
+            .wrapping_sub(at(x1, y0))
+            .wrapping_sub(at(x0, y1))
     }
 }
 
@@ -639,7 +799,12 @@ fn choose_grid(pixel: f32, dpr: f32, max_levels: u32) -> Grid {
     }
     let (size, m, k, _) = best.unwrap();
     let available = if m == 3 { k + 1 } else { k } as u32;
-    Grid { size, m, k, levels: max_levels.min(available) }
+    Grid {
+        size,
+        m,
+        k,
+        levels: max_levels.min(available),
+    }
 }
 
 struct GlyphBitmap {
@@ -656,7 +821,13 @@ fn bitmap(cache: &mut GlyphCache, font: &FdFont, id: u16, px: f32) -> Rc<GlyphBi
         .entry((id, px.to_bits()))
         .or_insert_with(|| {
             let (m, data) = font.rasterize_indexed(id, px);
-            Rc::new(GlyphBitmap { xmin: m.xmin, ymin: m.ymin, w: m.width as i32, h: m.height as i32, data })
+            Rc::new(GlyphBitmap {
+                xmin: m.xmin,
+                ymin: m.ymin,
+                w: m.width as i32,
+                h: m.height as i32,
+                data,
+            })
         })
         .clone()
 }
@@ -698,7 +869,9 @@ fn transform_word(w: &str, t: TextTransform) -> String {
         TextTransform::Lowercase => w.to_lowercase(),
         TextTransform::Capitalize => {
             let mut c = w.chars();
-            c.next().map_or(String::new(), |f| f.to_uppercase().collect::<String>() + c.as_str())
+            c.next().map_or(String::new(), |f| {
+                f.to_uppercase().collect::<String>() + c.as_str()
+            })
         }
     }
 }
@@ -738,11 +911,20 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
             let mut glyphs = Vec::new();
             for run in &shaped.runs {
                 for (gi, g) in run.glyphs.iter().enumerate() {
-                    glyphs.push((g.id, run.font_id, f32::from(g.position.x) + st.letter_spacing * gi as f32));
+                    glyphs.push((
+                        g.id,
+                        run.font_id,
+                        f32::from(g.position.x) + st.letter_spacing * gi as f32,
+                    ));
                 }
             }
             let width = f32::from(shaped.width) + st.letter_spacing * glyphs.len() as f32;
-            tokens.push(Token { color, joined: from == 0 && !prev_space, width, glyphs });
+            tokens.push(Token {
+                color,
+                joined: from == 0 && !prev_space,
+                width,
+                glyphs,
+            });
         };
         for (i, ch) in data.char_indices() {
             match (ch.is_whitespace(), word_start) {
@@ -761,7 +943,10 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
         if let Some(s) = word_start {
             flush(&mut tokens, s, data.len(), prev_space);
         }
-        prev_space = data.chars().last().map_or(prev_space, |c| c.is_whitespace());
+        prev_space = data
+            .chars()
+            .last()
+            .map_or(prev_space, |c| c.is_whitespace());
     }
     if tokens.is_empty() {
         return None;
@@ -782,7 +967,11 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
             _ => groups.push(i..i + 1),
         }
     }
-    let wrap = if inp.width > 0.0 { inp.width } else { f32::INFINITY };
+    let wrap = if inp.width > 0.0 {
+        inp.width
+    } else {
+        f32::INFINITY
+    };
     let mut lines_tok: Vec<Vec<(usize, f32)>> = vec![Vec::new()];
     let mut line_w: Vec<f32> = vec![0.0];
     let mut x = 0.0f32;
@@ -794,7 +983,11 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
             line_w.push(0.0);
             x = 0.0;
         }
-        let mut cx = if lines_tok.last().unwrap().is_empty() { 0.0 } else { x + space_w };
+        let mut cx = if lines_tok.last().unwrap().is_empty() {
+            0.0
+        } else {
+            x + space_w
+        };
         for ti in g.clone() {
             lines_tok.last_mut().unwrap().push((ti, cx));
             cx += tokens[ti].width;
@@ -830,12 +1023,27 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
                 if let Some(r) = ink {
                     line_ink = union_opt(line_ink, r);
                 }
-                glyphs.push(GlyphRec { id, font_id, x, base, color: tokens[ti].color, ink, line: li });
+                glyphs.push(GlyphRec {
+                    id,
+                    font_id,
+                    x,
+                    base,
+                    color: tokens[ti].color,
+                    ink,
+                    line: li,
+                });
             }
             tok_range[ti] = start..glyphs.len();
         }
         let top = li as f32 * st.line_height;
-        lines.push(Line { ink: line_ink.unwrap_or(R { l: 0.0, t: top, r: 1.0, b: top + st.line_height }) });
+        lines.push(Line {
+            ink: line_ink.unwrap_or(R {
+                l: 0.0,
+                t: top,
+                r: 1.0,
+                b: top + st.line_height,
+            }),
+        });
     }
     drop(cache);
 
@@ -859,9 +1067,17 @@ fn build_layout(inp: &BuildInput) -> Option<Layout> {
     };
     let mut units = Vec::new();
     for r in ranges {
-        let ink = glyphs[r.clone()].iter().filter_map(|g| g.ink).fold(None, union_opt);
+        let ink = glyphs[r.clone()]
+            .iter()
+            .filter_map(|g| g.ink)
+            .fold(None, union_opt);
         if let (Some(ink), false) = (ink, r.is_empty()) {
-            units.push(Unit { line: glyphs[r.start].line, glyphs: r, ink, height: content_h });
+            units.push(Unit {
+                line: glyphs[r.start].line,
+                glyphs: r,
+                ink,
+                height: content_h,
+            });
         }
     }
     if units.is_empty() {
@@ -1023,8 +1239,13 @@ impl Shader<'_> {
             2 => 1.0 - nx,
             3 => nx,
             4 | 5 => {
-                let radial = (((nx - 0.5) * rw).hypot((ny - 0.5) * rh)) / (0.5 * rw.hypot(rh)).max(1.0);
-                if self.u.direction == 4 { radial } else { 1.0 - radial }
+                let radial =
+                    (((nx - 0.5) * rw).hypot((ny - 0.5) * rh)) / (0.5 * rw.hypot(rh)).max(1.0);
+                if self.u.direction == 4 {
+                    radial
+                } else {
+                    1.0 - radial
+                }
             }
             6 => (nx + 1.0 - ny) * 0.5,
             _ => 0.5,
@@ -1037,7 +1258,8 @@ impl Shader<'_> {
         match self.u.pattern {
             0 => self.h(cx, cy, 1),
             1 => {
-                let v = self.vnoise(fx * 0.34, fy * 0.34, 2) * 0.65 + self.vnoise(fx * 0.83 + 7.0, fy * 0.83 + 7.0, 3) * 0.35;
+                let v = self.vnoise(fx * 0.34, fy * 0.34, 2) * 0.65
+                    + self.vnoise(fx * 0.83 + 7.0, fy * 0.83 + 7.0, 3) * 0.35;
                 smoothstep(0.2, 0.8, v)
             }
             2 => 0.84 * self.h(0, cy, 4) + 0.16 * self.h(cx, cy, 5),
@@ -1045,7 +1267,8 @@ impl Shader<'_> {
             4 => {
                 if self.u.whole {
                     let line = &self.l.lines[self.unit.line];
-                    let x = ((cell_px_x - line.ink.l) / (line.ink.r - line.ink.l).max(1.0)).clamp(0.0, 1.0);
+                    let x = ((cell_px_x - line.ink.l) / (line.ink.r - line.ink.l).max(1.0))
+                        .clamp(0.0, 1.0);
                     (self.unit.line as f32 + x) / (self.l.lines.len() as f32).max(1.0)
                 } else {
                     nx
@@ -1063,7 +1286,10 @@ impl Shader<'_> {
             7 => bayer8(fx, fy),
             8 => {
                 let (px_, py_) = (fx * 0.16, fy * 0.16);
-                let (wx, wy) = (self.vnoise(px_ + 3.7, py_ + 3.7, 8), self.vnoise(px_ + 11.3, py_ + 11.3, 9));
+                let (wx, wy) = (
+                    self.vnoise(px_ + 3.7, py_ + 3.7, 8),
+                    self.vnoise(px_ + 11.3, py_ + 11.3, 9),
+                );
                 let v = self.vnoise(px_ * 1.3 + wx * 2.4, py_ * 1.3 + wy * 2.4, 10) * 0.7
                     + self.vnoise(px_ * 2.7 + wx, py_ * 2.7 + wy, 11) * 0.3;
                 smoothstep(0.22, 0.78, v)
@@ -1073,7 +1299,11 @@ impl Shader<'_> {
     }
 
     fn field(&self, cx: i32, cy: i32, ppx: f32, ppy: f32) -> f32 {
-        let rect = if self.u.whole { self.l.ink } else { self.unit.ink };
+        let rect = if self.u.whole {
+            self.l.ink
+        } else {
+            self.unit.ink
+        };
         let (rw, rh) = (rect.r - rect.l, rect.b - rect.t);
         let nx = ((ppx - rect.l) / rw.max(1.0)).clamp(0.0, 1.0);
         let ny = ((ppy - rect.t) / rh.max(1.0)).clamp(0.0, 1.0);
@@ -1082,7 +1312,11 @@ impl Shader<'_> {
         } else if self.u.pattern == 9 {
             self.ramp(nx, ny, rw, rh)
         } else {
-            mixf(self.ramp(nx, ny, rw, rh), self.pattern(cx, cy, ppx, nx, rect.t, rh), self.u.noise)
+            mixf(
+                self.ramp(nx, ny, rw, rh),
+                self.pattern(cx, cy, ppx, nx, rect.t, rh),
+                self.u.noise,
+            )
         };
         f += (self.h(cx, cy, 12) - 0.5) * self.u.scatter;
         f.clamp(0.0, 1.0)
@@ -1103,11 +1337,17 @@ impl Shader<'_> {
 
     fn quad(&self, window: &mut Window, bx: i32, by: i32, b: i32, color: Hsla) {
         let d = self.l.dpr;
-        let (x0, y0) = (self.ox + bx as f32 * b as f32 / d, self.oy + by as f32 * b as f32 / d);
+        let (x0, y0) = (
+            self.ox + bx as f32 * b as f32 / d,
+            self.oy + by as f32 * b as f32 / d,
+        );
         let (x1, y1) = (x0 + b as f32 / d, y0 + b as f32 / d);
         let (x0, y0, x1, y1) = (self.snap(x0), self.snap(y0), self.snap(x1), self.snap(y1));
         window.paint_quad(fill(
-            Bounds::new(point(px(x0), px(y0)), size(px((x1 - x0).max(0.0)), px((y1 - y0).max(0.0)))),
+            Bounds::new(
+                point(px(x0), px(y0)),
+                size(px((x1 - x0).max(0.0)), px((y1 - y0).max(0.0))),
+            ),
             color,
         ));
     }
@@ -1115,7 +1355,10 @@ impl Shader<'_> {
     fn cell(&mut self, window: &mut Window, cx: i32, cy: i32, progress: f32) {
         let g = self.l.grid.size;
         let d = self.l.dpr;
-        let (ppx, ppy) = ((cx as f32 + 0.5) * g as f32 / d, (cy as f32 + 0.5) * g as f32 / d);
+        let (ppx, ppy) = (
+            (cx as f32 + 0.5) * g as f32 / d,
+            (cy as f32 + 0.5) * g as f32 / d,
+        );
         let f = self.field(cx, cy, ppx, ppy);
         let q = ((progress - f * (1.0 - self.u.spread)) / self.u.spread).clamp(0.0, 1.0);
         if q <= 0.0 {
@@ -1128,10 +1371,14 @@ impl Shader<'_> {
         let levels = self.l.grid.levels;
         let b = self.l.grid.size >> level;
         let d = self.l.dpr;
-        let life = q.min(self.lens_cap((bx as f32 + 0.5) * b as f32 / d, (by as f32 + 0.5) * b as f32 / d));
+        let life = q.min(self.lens_cap(
+            (bx as f32 + 0.5) * b as f32 / d,
+            (by as f32 + 0.5) * b as f32 / d,
+        ));
 
         if level >= levels {
-            self.crisp.push((bx * b, by * b, (bx + 1) * b, (by + 1) * b)); // levels == 0
+            self.crisp
+                .push((bx * b, by * b, (bx + 1) * b, (by + 1) * b)); // levels == 0
             return;
         }
         let k = level + 1;
@@ -1139,7 +1386,8 @@ impl Shader<'_> {
         let threshold = mixf(0.12, 0.84, (k as f32 - 0.5 + jitter * 0.9) / levels as f32);
         if life >= threshold {
             if k >= levels {
-                self.crisp.push((bx * b, by * b, (bx + 1) * b, (by + 1) * b));
+                self.crisp
+                    .push((bx * b, by * b, (bx + 1) * b, (by + 1) * b));
             } else {
                 for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
                     self.visit_child(window, bx * 2 + dx, by * 2 + dy, k, q);
@@ -1172,9 +1420,18 @@ impl Shader<'_> {
         let cover = sum as f32 / (255.0 * (b * b) as f32);
 
         let mut ink = rgb3(self.l.glyphs[self.unit.glyphs.start].color);
-        let accent = if u.accent_mix >= self.h(sx, sy, 40 + level) { u.accent2 } else { u.accent };
+        let accent = if u.accent_mix >= self.h(sx, sy, 40 + level) {
+            u.accent2
+        } else {
+            u.accent
+        };
         let heat = u.accent_strength
-            * (1.0 - smoothstep(0.0, u.accent_width, life + (self.h(sx, sy, 41 + level) - 0.5) * 0.18));
+            * (1.0
+                - smoothstep(
+                    0.0,
+                    u.accent_width,
+                    life + (self.h(sx, sy, 41 + level) - 0.5) * 0.18,
+                ));
 
         let fine = level as f32 / (self.l.grid.levels as f32 - 1.0).max(1.0);
         let mut alpha = mixf(
@@ -1196,13 +1453,20 @@ impl Shader<'_> {
         }
         if u.flicker > 0.0 && life < 0.42 {
             let tick = (u.time * 20.0 + self.h(sx, sy, 43) * 7.0).floor() as i32;
-            if self.h(sx.wrapping_add(tick.wrapping_mul(13)), sy.wrapping_add(tick.wrapping_mul(13)), 44)
-                < u.flicker * (1.0 - life / 0.42)
+            if self.h(
+                sx.wrapping_add(tick.wrapping_mul(13)),
+                sy.wrapping_add(tick.wrapping_mul(13)),
+                44,
+            ) < u.flicker * (1.0 - life / 0.42)
             {
                 alpha *= 0.15;
             }
         }
-        let jit = [self.h(sx, sy, 45) - 0.5, self.h(sx, sy, 46) - 0.5, self.h(sx, sy, 47) - 0.5];
+        let jit = [
+            self.h(sx, sy, 45) - 0.5,
+            self.h(sx, sy, 46) - 0.5,
+            self.h(sx, sy, 47) - 0.5,
+        ];
         for i in 0..3 {
             ink[i] = (ink[i] + jit[i] * u.color_noise * 2.0 * (1.0 - life)).clamp(0.0, 1.0);
         }
@@ -1212,7 +1476,13 @@ impl Shader<'_> {
             return;
         }
         let c = mix3(ink, accent, heat);
-        let color: Hsla = Rgba { r: c[0], g: c[1], b: c[2], a: alpha.clamp(0.0, 1.0) }.into();
+        let color: Hsla = Rgba {
+            r: c[0],
+            g: c[1],
+            b: c[2],
+            a: alpha.clamp(0.0, 1.0),
+        }
+        .into();
         self.quad(window, bx, by, b, color);
     }
 }
@@ -1227,10 +1497,22 @@ struct PaintParams {
     lens_active: bool,
 }
 
-fn paint_glyphs(window: &mut Window, l: &Layout, range: std::ops::Range<usize>, ox: f32, oy: f32, clip: Option<R>) {
+fn paint_glyphs(
+    window: &mut Window,
+    l: &Layout,
+    range: std::ops::Range<usize>,
+    ox: f32,
+    oy: f32,
+    clip: Option<R>,
+) {
     for g in &l.glyphs[range] {
         if let (Some(c), Some(ink)) = (clip, g.ink) {
-            let inflated = R { l: ink.l - 1.0, t: ink.t - 1.0, r: ink.r + 1.0, b: ink.b + 1.0 };
+            let inflated = R {
+                l: ink.l - 1.0,
+                t: ink.t - 1.0,
+                r: ink.r + 1.0,
+                b: ink.b + 1.0,
+            };
             if !inflated.hits(&c) {
                 continue;
             }
@@ -1238,7 +1520,13 @@ fn paint_glyphs(window: &mut Window, l: &Layout, range: std::ops::Range<usize>, 
             continue;
         }
         window
-            .paint_glyph(point(px(ox + g.x), px(oy + g.base)), g.font_id, g.id, px(l.font_size), g.color)
+            .paint_glyph(
+                point(px(ox + g.x), px(oy + g.base)),
+                g.font_id,
+                g.id,
+                px(l.font_size),
+                g.color,
+            )
             .ok();
     }
 }
@@ -1254,8 +1542,12 @@ fn paint_reveal(window: &mut Window, bounds: Bounds<Pixels>, p: &PaintParams) {
     if oy > f32::from(vp.height) + margin || oy + l.height < -margin {
         return;
     }
-    let clip_h = p.clip_below.map_or(f32::from(vp.height), |c| c.min(f32::from(vp.height)));
-    let mask = ContentMask { bounds: Bounds::new(point(px(0.0), px(0.0)), size(vp.width, px(clip_h.max(0.0)))) };
+    let clip_h = p
+        .clip_below
+        .map_or(f32::from(vp.height), |c| c.min(f32::from(vp.height)));
+    let mask = ContentMask {
+        bounds: Bounds::new(point(px(0.0), px(0.0)), size(vp.width, px(clip_h.max(0.0)))),
+    };
 
     window.with_content_mask(Some(mask), |window| {
         if matches!(p.state, State::Done | State::Static) || l.plain {
@@ -1288,10 +1580,15 @@ fn paint_reveal(window: &mut Window, bounds: Bounds<Pixels>, p: &PaintParams) {
 
             let near_lens = p.lens_active && {
                 let [lx, ly, _, r] = u.lens;
-                lx > unit.ink.l - r && lx < unit.ink.r + r && ly > unit.ink.t - r && ly < unit.ink.b + r
+                lx > unit.ink.l - r
+                    && lx < unit.ink.r + r
+                    && ly > unit.ink.t - r
+                    && ly < unit.ink.b + r
             };
             if progress >= 1.0 && !near_lens {
-                line_mask(window, &mut |w| paint_glyphs(w, l, unit.glyphs.clone(), ox, unit_oy, None));
+                line_mask(window, &mut |w| {
+                    paint_glyphs(w, l, unit.glyphs.clone(), ox, unit_oy, None)
+                });
                 continue;
             }
 
@@ -1326,14 +1623,21 @@ fn paint_reveal(window: &mut Window, bounds: Bounds<Pixels>, p: &PaintParams) {
                     if atlas.sum(x0, y0, x1, y1) == 0 {
                         continue;
                     }
-                    let r = R { l: x0 as f32 / d, t: y0 as f32 / d, r: x1 as f32 / d, b: y1 as f32 / d };
+                    let r = R {
+                        l: x0 as f32 / d,
+                        t: y0 as f32 / d,
+                        r: x1 as f32 / d,
+                        b: y1 as f32 / d,
+                    };
                     let m = ContentMask {
                         bounds: Bounds::new(
                             point(px(ox + r.l), px(unit_oy + r.t)),
                             size(px(r.r - r.l), px(r.b - r.t)),
                         ),
                     };
-                    w.with_content_mask(Some(m), |w| paint_glyphs(w, l, unit.glyphs.clone(), ox, unit_oy, Some(r)));
+                    w.with_content_mask(Some(m), |w| {
+                        paint_glyphs(w, l, unit.glyphs.clone(), ox, unit_oy, Some(r))
+                    });
                 }
             });
         }
@@ -1419,7 +1723,12 @@ impl PixelReveal {
         Self::with_spans(vec![Span::new(text)], font, style, options)
     }
 
-    pub fn with_spans(spans: Vec<Span>, font: Rc<RevealFont>, style: TextStyle, options: Options) -> Self {
+    pub fn with_spans(
+        spans: Vec<Span>,
+        font: Rc<RevealFont>,
+        style: TextStyle,
+        options: Options,
+    ) -> Self {
         let o = resolve(&options);
         Self {
             spans,
@@ -1465,12 +1774,15 @@ impl PixelReveal {
         }
     }
 
-
     pub fn state(&self) -> State {
         self.state
     }
     pub fn progress(&self) -> f32 {
-        if self.layout.is_some() { self.time / self.total } else { 0.0 }
+        if self.layout.is_some() {
+            self.time / self.total
+        } else {
+            0.0
+        }
     }
     pub fn play(&mut self, cx: &mut Context<Self>) {
         self.wait = 0.0;
@@ -1541,12 +1853,22 @@ impl PixelReveal {
         }
         let a = &self.o;
         let layout = a.split != next.split || a.pixel != next.pixel || a.levels != next.levels;
-        let timeline = a.sweep != next.sweep || a.from != next.from || a.stagger != next.stagger
-            || a.duration != next.duration || a.ease != next.ease || a.reveal_delay != next.reveal_delay
-            || a.rise != next.rise || a.rise_duration != next.rise_duration || a.rise_ease != next.rise_ease
+        let timeline = a.sweep != next.sweep
+            || a.from != next.from
+            || a.stagger != next.stagger
+            || a.duration != next.duration
+            || a.ease != next.ease
+            || a.reveal_delay != next.reveal_delay
+            || a.rise != next.rise
+            || a.rise_duration != next.rise_duration
+            || a.rise_ease != next.rise_ease
             || a.seed != next.seed;
-        let trigger = a.trigger != next.trigger || a.start != next.start || a.end != next.end
-            || a.once != next.once || a.delay != next.delay || a.smooth != next.smooth;
+        let trigger = a.trigger != next.trigger
+            || a.start != next.start
+            || a.end != next.end
+            || a.once != next.once
+            || a.delay != next.delay
+            || a.smooth != next.smooth;
 
         let was_done = self.layout.is_some() && self.time >= self.total;
         self.options = options;
@@ -1568,7 +1890,6 @@ impl PixelReveal {
         }
         self.wake(cx);
     }
-
 
     fn wake(&mut self, cx: &mut Context<Self>) {
         if !self.animating {
@@ -1613,7 +1934,9 @@ impl PixelReveal {
             let seed = (1000.0 * o.seed).round() as i32;
             let mut idx: Vec<usize> = (0..n).collect();
             idx.sort_by(|&a, &b| {
-                hash01(7919 * a as i32 + seed).partial_cmp(&hash01(7919 * b as i32 + seed)).unwrap()
+                hash01(7919 * a as i32 + seed)
+                    .partial_cmp(&hash01(7919 * b as i32 + seed))
+                    .unwrap()
             });
             for (rank, unit) in idx.into_iter().enumerate() {
                 order[unit] = rank as f32;
@@ -1633,8 +1956,17 @@ impl PixelReveal {
         let stagger_span = max_order * o.stagger;
 
         self.rise_dist = layout.units.iter().map(|u| o.rise * u.height).collect();
-        let reveal_end = (if o.sweep == Sweep::Whole { 0.0 } else { stagger_span }) + o.reveal_delay + o.duration;
-        let rise_end = if o.rise != 0.0 { stagger_span + o.rise_duration } else { 0.0 };
+        let reveal_end = (if o.sweep == Sweep::Whole {
+            0.0
+        } else {
+            stagger_span
+        }) + o.reveal_delay
+            + o.duration;
+        let rise_end = if o.rise != 0.0 {
+            stagger_span + o.rise_duration
+        } else {
+            0.0
+        };
         self.total = reveal_end.max(rise_end).max(0.001);
         self.order = order;
         self.ease_reveal = Ease::parse(&o.ease);
@@ -1644,7 +1976,11 @@ impl PixelReveal {
         if let Some(p) = self.pending_seek.take() {
             self.time = p * self.total;
         } else {
-            self.time = if was_done { self.total } else { self.time.min(self.total) };
+            self.time = if was_done {
+                self.total
+            } else {
+                self.time.min(self.total)
+            };
         }
         self.time_dirty = true;
     }
@@ -1656,18 +1992,36 @@ impl PixelReveal {
         for i in 0..self.anim.len() {
             let start = self.order[i] * o.stagger;
             let mut reveal = (t - start - o.reveal_delay) / o.duration;
-            reveal = if reveal <= 0.0 { 0.0 } else if reveal >= 1.0 { 1.0 } else { self.ease_reveal.apply(reveal) };
+            reveal = if reveal <= 0.0 {
+                0.0
+            } else if reveal >= 1.0 {
+                1.0
+            } else {
+                self.ease_reveal.apply(reveal)
+            };
             any |= reveal > 0.0;
             let mut rise = 1.0;
             if self.rise_dist[i] != 0.0 {
                 rise = (t - start) / o.rise_duration;
-                rise = if rise <= 0.0 { 0.0 } else if rise >= 1.0 { 1.0 } else { self.ease_rise.apply(rise) };
+                rise = if rise <= 0.0 {
+                    0.0
+                } else if rise >= 1.0 {
+                    1.0
+                } else {
+                    self.ease_rise.apply(rise)
+                };
             }
             self.anim[i] = [reveal, (1.0 - rise) * self.rise_dist[i]];
         }
         if o.sweep == Sweep::Whole {
             let mut p = (t - o.reveal_delay) / o.duration;
-            p = if p <= 0.0 { 0.0 } else if p >= 1.0 { 1.0 } else { self.ease_reveal.apply(p) };
+            p = if p <= 0.0 {
+                0.0
+            } else if p >= 1.0 {
+                1.0
+            } else {
+                self.ease_reveal.apply(p)
+            };
             self.whole_progress = p;
             any = p > 0.0;
         }
@@ -1683,18 +2037,29 @@ impl PixelReveal {
     fn scrub_progress(&mut self, top: f32, height: f32, vp_h: f32) -> f32 {
         if self.o.trigger == Trigger::Pin {
             if let Some(p) = self.pin_progress {
-                let from = match self.o.start { Some(Pos::Num(v)) => v, _ => 0.0 };
-                let to = match self.o.end { Some(Pos::Num(v)) => v, _ => 0.85 };
+                let from = match self.o.start {
+                    Some(Pos::Num(v)) => v,
+                    _ => 0.0,
+                };
+                let to = match self.o.end {
+                    Some(Pos::Num(v)) => v,
+                    _ => 0.85,
+                };
                 return ((p - from) / (to - from).max(1e-4)).clamp(0.0, 1.0);
             }
             if !self.warned_pin {
                 self.warned_pin = true;
-                eprintln!("[pixel-reveal] trigger=pin needs set_pin_progress(); scrubbing through the viewport instead");
+                eprintln!(
+                    "[pixel-reveal] trigger=pin needs set_pin_progress(); scrubbing through the viewport instead"
+                );
             }
         }
         let scrub = self.o.trigger == Trigger::Scrub;
         let (start, end) = if scrub {
-            (self.o.start.unwrap_or(Pos::parse("top 92%")), self.o.end.unwrap_or(Pos::parse("bottom 55%")))
+            (
+                self.o.start.unwrap_or(Pos::parse("top 92%")),
+                self.o.end.unwrap_or(Pos::parse("bottom 55%")),
+            )
         } else {
             (Pos::parse("top 92%"), Pos::parse("bottom 55%"))
         };
@@ -1738,7 +2103,11 @@ impl PixelReveal {
             Trigger::Scrub | Trigger::Pin => {
                 let target = self.scrub_progress(top, height, vp_h) * self.total;
                 self.dir = 0;
-                self.time = if self.o.smooth > 0.0 { damp(self.time, target, 3.0 / self.o.smooth, dt) } else { target };
+                self.time = if self.o.smooth > 0.0 {
+                    damp(self.time, target, 3.0 / self.o.smooth, dt)
+                } else {
+                    target
+                };
                 if (self.time - target).abs() < 1e-4 {
                     self.time = target;
                 }
@@ -1760,7 +2129,12 @@ impl PixelReveal {
             dt = -self.wait;
             self.wait = 0.0;
         }
-        self.time += dt * if self.dir > 0 { 1.0 } else { self.o.reverse_speed } * self.dir as f32;
+        self.time +=
+            dt * if self.dir > 0 {
+                1.0
+            } else {
+                self.o.reverse_speed
+            } * self.dir as f32;
         if self.time >= self.total {
             self.time = self.total;
             self.dir = 0;
@@ -1786,8 +2160,16 @@ impl PixelReveal {
             solid: o.solid,
             accent,
             accent2: o.accent2.map_or(accent, rgb3),
-            accent_mix: if o.accent2.is_some() { o.accent_mix } else { 0.0 },
-            accent_strength: if o.accent.is_some() { o.accent_strength } else { 0.0 },
+            accent_mix: if o.accent2.is_some() {
+                o.accent_mix
+            } else {
+                0.0
+            },
+            accent_strength: if o.accent.is_some() {
+                o.accent_strength
+            } else {
+                0.0
+            },
             accent_width: o.accent_width,
             color_noise: o.color_noise,
             sparkle: o.sparkle,
@@ -1814,24 +2196,35 @@ impl Tap for Uniforms {}
 impl Render for PixelReveal {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let b = self.bounds.get();
-        let (width, left, top) = (f32::from(b.size.width), f32::from(b.origin.x), f32::from(b.origin.y));
+        let (width, left, top) = (
+            f32::from(b.size.width),
+            f32::from(b.origin.x),
+            f32::from(b.origin.y),
+        );
         let dpr = window.scale_factor().min(self.style.max_dpr);
         let vp_h = f32::from(window.viewport_size().height);
 
-        if width > 0.0 && (self.stale || (width - self.built_width).abs() > 0.5 || dpr != self.built_dpr) {
+        if width > 0.0
+            && (self.stale || (width - self.built_width).abs() > 0.5 || dpr != self.built_dpr)
+        {
             self.rebuild(width, dpr, window);
         }
 
         let now = Instant::now();
         let dt = if self.animating {
-            self.last_frame.replace(now).map_or(1.0 / 60.0, |p| (now - p).as_secs_f32().min(0.1))
+            self.last_frame
+                .replace(now)
+                .map_or(1.0 / 60.0, |p| (now - p).as_secs_f32().min(0.1))
         } else {
             self.last_frame = None;
             0.0
         };
         self.clock += dt;
 
-        let height = self.layout.as_ref().map_or(self.style.line_height, |l| l.height);
+        let height = self
+            .layout
+            .as_ref()
+            .map_or(self.style.line_height, |l| l.height);
         let static_text = self.reduce_motion || self.layout.as_ref().is_some_and(|l| l.plain);
         let mut moving = false;
 
@@ -1861,7 +2254,10 @@ impl Render for PixelReveal {
                         self.lens_x = px_;
                         self.lens_y = py_;
                     }
-                    let (nx, ny) = (damp(self.lens_x, px_, 9.0, dt), damp(self.lens_y, py_, 9.0, dt));
+                    let (nx, ny) = (
+                        damp(self.lens_x, px_, 9.0, dt),
+                        damp(self.lens_y, py_, 9.0, dt),
+                    );
                     moving |= (nx - self.lens_x).abs() + (ny - self.lens_y).abs() > 0.02;
                     self.lens_x = nx;
                     self.lens_y = ny;
@@ -1896,7 +2292,8 @@ impl Render for PixelReveal {
             }
         } else if static_text && self.state != State::Static {
             self.state = State::Static;
-            self.events.push(PixelRevealEvent::StateChanged(State::Static));
+            self.events
+                .push(PixelRevealEvent::StateChanged(State::Static));
         }
 
         for e in std::mem::take(&mut self.events) {

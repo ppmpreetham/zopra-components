@@ -18,12 +18,12 @@
 
 use std::{cell::Cell, rc::Rc, time::Instant};
 
-use gpui_kit::{
-    canvas, div, prelude::*, px, relative, rgb, rgba, white, App, Bounds, ClickEvent, Context,
-    EventEmitter, FocusHandle, Focusable, FontWeight, Hsla, Pixels, Render, Rgba, SharedString,
-    Subscription, Window,
-};
 use gpui_kit::component::{ActiveTheme as _, Icon, IconName};
+use gpui_kit::{
+    App, Bounds, ClickEvent, Context, EventEmitter, FocusHandle, Focusable, FontWeight, Hsla,
+    Pixels, Render, Rgba, SharedString, Subscription, Window, canvas, div, prelude::*, px,
+    relative, rgb, rgba, white,
+};
 
 /// Emitted on click or keyboard activation.
 #[derive(Clone, Debug)]
@@ -76,7 +76,11 @@ impl Bezier {
             if (v - x).abs() < 1e-5 {
                 break;
             }
-            if v < x { lo = t } else { hi = t }
+            if v < x {
+                lo = t
+            } else {
+                hi = t
+            }
             t = (lo + hi) / 2.0;
         }
         Self::at(y1, y2, t)
@@ -220,7 +224,7 @@ impl DiscoverButton {
         }
     }
 
-    fn expanded(&self) -> bool {
+    const fn expanded(&self) -> bool {
         self.hovered || (self.focused && self.focus_visible)
     }
 

@@ -20,14 +20,13 @@
 
 use std::{cell::Cell, rc::Rc, time::Instant};
 
-use gpui_kit::{
-    actions, canvas, div, prelude::*, px, App, Bounds, Context, DispatchPhase, EventEmitter,
-    FocusHandle, Focusable, FontWeight, KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Point, Render, SharedString, Subscription, Window,
-};
 use gpui_kit::component::{
-    button::Button,
-    h_flex, v_flex, ActiveTheme as _, Disableable as _, IconName, Sizable as _,
+    ActiveTheme as _, Disableable as _, IconName, Sizable as _, button::Button, h_flex, v_flex,
+};
+use gpui_kit::{
+    App, Bounds, Context, DispatchPhase, EventEmitter, FocusHandle, Focusable, FontWeight,
+    KeyBinding, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Render,
+    SharedString, Subscription, Window, actions, canvas, div, prelude::*, px,
 };
 
 actions!(range_slider, [Inc, Dec, IncLarge, DecLarge, ToStart, ToEnd]);
@@ -59,7 +58,7 @@ enum Thumb {
 }
 
 impl Thumb {
-    fn ix(self) -> usize {
+    const fn ix(self) -> usize {
         self as usize
     }
 }
@@ -164,8 +163,10 @@ fn group_digits(n: i64) -> String {
 
 impl RangeSlider {
     pub fn new(config: RangeSliderConfig, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let focus = [cx.focus_handle().tab_stop(true), cx.focus_handle().tab_stop(true)];
-        // Focus ring is drawn from `is_focused`, so focus changes need a re-render.
+        let focus = [
+            cx.focus_handle().tab_stop(true),
+            cx.focus_handle().tab_stop(true),
+        ];
         let mut subs = Vec::new();
         for handle in &focus {
             subs.push(cx.on_focus(handle, window, |_, _, cx| cx.notify()));
@@ -200,7 +201,7 @@ impl RangeSlider {
         this
     }
 
-    pub fn range(&self) -> (f32, f32) {
+    pub const fn range(&self) -> (f32, f32) {
         (self.low, self.high)
     }
 
@@ -220,8 +221,6 @@ impl RangeSlider {
         self.rebuild_labels();
         self.set_range(self.low, self.high, cx);
     }
-
-    // ---- math --------------------------------------------------------------
 
     fn span(&self) -> f32 {
         (self.config.max - self.config.min).max(1e-9)
@@ -256,7 +255,11 @@ impl RangeSlider {
         let mut labels: Vec<f32> = Vec::with_capacity(n);
         for i in 0..n {
             let raw = c.min + i as f32 * (c.max - c.min) / (n - 1) as f32;
-            let rounded = if c.step > 0.0 { ((raw - c.min) / c.step).round() * c.step + c.min } else { raw };
+            let rounded = if c.step > 0.0 {
+                ((raw - c.min) / c.step).round() * c.step + c.min
+            } else {
+                raw
+            };
             if !labels.contains(&rounded) {
                 labels.push(rounded);
             }
@@ -264,7 +267,6 @@ impl RangeSlider {
         self.labels = labels;
     }
 
-    /// Thumb geometry follows Radix: thumbs never overhang the track ends.
     fn usable(&self) -> f32 {
         (f32::from(self.bounds.get().size.width) - self.config.thumb_size).max(1.0)
     }
@@ -279,8 +281,6 @@ impl RangeSlider {
         let t = ((x - self.config.thumb_size / 2.0) / self.usable()).clamp(0.0, 1.0);
         self.snap(self.config.min + t * self.span())
     }
-
-    // ---- interaction -------------------------------------------------------
 
     fn wake(&mut self, cx: &mut Context<Self>) {
         if !self.animating {
@@ -305,7 +305,10 @@ impl RangeSlider {
     }
 
     fn end(&self, cx: &mut Context<Self>) {
-        cx.emit(RangeSliderEvent::ChangeEnd { low: self.low, high: self.high });
+        cx.emit(RangeSliderEvent::ChangeEnd {
+            low: self.low,
+            high: self.high,
+        });
     }
 
     fn on_down(&mut self, pos: Point<Pixels>, window: &mut Window, cx: &mut Context<Self>) {
@@ -319,7 +322,6 @@ impl RangeSlider {
         } else {
             Thumb::High
         };
-        // If your gpui build wants `cx` as a second argument, add it here.
         window.focus(&self.focus[which.ix()], cx);
         self.drag = Some(which);
         self.preview = None;
@@ -358,14 +360,21 @@ impl RangeSlider {
     }
 
     fn nudge(&mut self, which: Thumb, steps: f32, cx: &mut Context<Self>) {
-        let cur = if which == Thumb::Low { self.low } else { self.high };
-        let step = if self.config.step > 0.0 { self.config.step } else { self.span() / 100.0 };
+        let cur = if which == Thumb::Low {
+            self.low
+        } else {
+            self.high
+        };
+        let step = if self.config.step > 0.0 {
+            self.config.step
+        } else {
+            self.span() / 100.0
+        };
         self.set_thumb(which, cur + steps * step, cx);
         self.end(cx);
     }
 
     fn jump(&mut self, which: Thumb, to_end: bool, cx: &mut Context<Self>) {
-        // Thumbs can't cross: Home/End stop at the other thumb.
         let v = match (which, to_end) {
             (Thumb::Low, false) => self.config.min,
             (Thumb::Low, true) => self.high,
@@ -376,11 +385,10 @@ impl RangeSlider {
         self.end(cx);
     }
 
-    // ---- per-frame simulation ---------------------------------------------
-
-    /// Ghost span between the hovered value and the nearest edge of the selection.
     fn ghost_target(&self) -> Option<(f32, f32)> {
-        let p = self.preview.filter(|_| self.drag.is_none() && self.config.hover_preview)?;
+        let p = self
+            .preview
+            .filter(|_| self.drag.is_none() && self.config.hover_preview)?;
         if p < self.low {
             let (a, b) = (self.x_of(p), self.x_of(self.low));
             Some((a, b - a))
@@ -404,7 +412,11 @@ impl RangeSlider {
         self.shown_high += (self.high - self.shown_high) * ease(TAU_NUM);
 
         let grow_target = [Thumb::Low, Thumb::High].map(|t| {
-            if self.hover_thumb == Some(t) || self.drag == Some(t) { 1.0 } else { 0.0 }
+            if self.hover_thumb == Some(t) || self.drag == Some(t) {
+                1.0
+            } else {
+                0.0
+            }
         });
         let mut grow_moving = false;
         for i in 0..2 {
@@ -428,7 +440,8 @@ impl RangeSlider {
             None => self.ghost_on = false,
         }
 
-        let num_moving = (self.low - self.shown_low).abs() > 0.05 || (self.high - self.shown_high).abs() > 0.05;
+        let num_moving =
+            (self.low - self.shown_low).abs() > 0.05 || (self.high - self.shown_high).abs() > 0.05;
 
         if num_moving || grow_moving || ghost_moving {
             window.request_animation_frame();
@@ -443,13 +456,20 @@ impl RangeSlider {
         }
     }
 
-    // ---- element builders --------------------------------------------------
-
-    fn render_thumb(&self, which: Thumb, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_thumb(
+        &self,
+        which: Thumb,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let c = &self.config;
         let theme = cx.theme();
         let i = which.ix();
-        let value = if which == Thumb::Low { self.low } else { self.high };
+        let value = if which == Thumb::Low {
+            self.low
+        } else {
+            self.high
+        };
 
         let size = c.thumb_size + (c.thumb_hover_size - c.thumb_size) * self.grow[i];
         let x = self.x_of(value) - size / 2.0;
@@ -494,7 +514,12 @@ impl Render for RangeSlider {
 
         let c = self.config.clone();
         let theme = cx.theme();
-        let (fg, muted_fg, primary, track_bg) = (theme.foreground, theme.muted_foreground, theme.primary, theme.secondary);
+        let (fg, muted_fg, primary, track_bg) = (
+            theme.foreground,
+            theme.muted_foreground,
+            theme.primary,
+            theme.secondary,
+        );
 
         let is_default = self.low == c.min && self.high == c.max;
         let track_top = (ZONE_H - c.track_height) / 2.0;
@@ -520,15 +545,18 @@ impl Render for RangeSlider {
             .cursor_pointer()
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|this, ev: &MouseDownEvent, window, cx| this.on_down(ev.position, window, cx)),
+                cx.listener(|this, ev: &MouseDownEvent, window, cx| {
+                    this.on_down(ev.position, window, cx)
+                }),
             )
-            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.on_hover_move(ev.position, cx)))
+            .on_mouse_move(
+                cx.listener(|this, ev: &MouseMoveEvent, _, cx| this.on_hover_move(ev.position, cx)),
+            )
             .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
                 if !*hovered && this.preview.take().is_some() {
                     this.wake(cx);
                 }
             }))
-            // Bounds probe, plus window-level drag listeners that exist only while dragging.
             .child(
                 canvas(
                     {
@@ -536,8 +564,9 @@ impl Render for RangeSlider {
                         move |bounds, window, cx| {
                             let prev = probe.replace(bounds);
                             if (prev.size.width - bounds.size.width).abs() > px(0.5) {
-                                let entity = entity.clone();
-                                window.defer(cx, move |_, cx| entity.update(cx, |_, cx| cx.notify()));
+                                let entity = entity;
+                                window
+                                    .defer(cx, move |_, cx| entity.update(cx, |_, cx| cx.notify()));
                             }
                         }
                     },
@@ -554,11 +583,11 @@ impl Render for RangeSlider {
                                 if ev.pressed_button == Some(MouseButton::Left) {
                                     this.on_drag_move(ev.position, cx);
                                 } else {
-                                    this.on_up(cx); // mouse-up happened off-window
+                                    this.on_up(cx);
                                 }
                             });
                         });
-                        let e = entity.clone();
+                        let e = entity;
                         window.on_mouse_event(move |ev: &MouseUpEvent, phase, _, cx| {
                             if phase == DispatchPhase::Capture && ev.button == MouseButton::Left {
                                 e.update(cx, |this, cx| this.on_up(cx));
@@ -654,7 +683,11 @@ impl Render for RangeSlider {
                         .text_size(px(11.0))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(muted_fg.opacity(0.6))
-                        .children(self.labels.iter().map(|&v| format!("{}{}", c.prefix, self.fmt(v)))),
+                        .children(
+                            self.labels
+                                .iter()
+                                .map(|&v| format!("{}{}", c.prefix, self.fmt(v))),
+                        ),
                 ),
             )
     }
